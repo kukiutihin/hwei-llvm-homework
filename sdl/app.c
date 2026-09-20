@@ -5,9 +5,9 @@
 #define Y_SIZE SIM_Y_SIZE / 4
 
 #define CLICK_TEMP 150
-#define CLICK_RAD 100
+#define CLICK_RAD 30
 
-int32_t colorByTemp(int32_t temp) {
+int32_t colorByTemp(float temp) {
   if (temp <= 10)
     return 0x000A1128;
   else if (temp <= 20)
@@ -40,32 +40,32 @@ int32_t colorByTemp(int32_t temp) {
     return 0x00FDF0ED;
 }
 
-int32_t calcTemp(int32_t x, int32_t y, int32_t *field) {
-  int32_t currT = field[y * X_SIZE + x];
+float calcTemp(int32_t x, int32_t y, float *field) {
+  float currT = field[y * X_SIZE + x];
 
-  int32_t top = y > 0 ? field[(y - 1) * X_SIZE + x] : currT;
-  int32_t bottom = y < Y_SIZE - 1 ? field[(y + 1) * X_SIZE + x] : currT;
-  int32_t left = x > 0 ? field[y * X_SIZE + x - 1] : currT;
-  int32_t right = x < X_SIZE - 1 ? field[y * X_SIZE + x + 1] : currT;
+  float top = y > 0 ? field[(y - 1) * X_SIZE + x] : currT;
+  float bottom = y < Y_SIZE - 1 ? field[(y + 1) * X_SIZE + x] : currT;
+  float left = x > 0 ? field[y * X_SIZE + x - 1] : currT;
+  float right = x < X_SIZE - 1 ? field[y * X_SIZE + x + 1] : currT;
 
-  return currT + (top + bottom + left + right - 4 * currT) / 4;
+  return currT + 0.25 * (top + bottom + left + right - 4.0 * currT);
 }
 
-void recalculateField(int32_t *current, int32_t *next) {
+void recalculateField(float *current, float *next) {
   for (int y = 0; y < Y_SIZE; y++)
     for (int x = 0; x < X_SIZE; x++) {
-      int32_t temp = calcTemp(x, y, current);
+      float temp = calcTemp(x, y, current);
       next[y * X_SIZE + x] = temp;
     }
 }
 
-void drawField(int32_t *field) {
+void drawField(float *field) {
   for (int y = 0; y < Y_SIZE; y++)
     for (int x = 0; x < X_SIZE; x++)
       simPutPixel(x, y, colorByTemp(field[y * X_SIZE + x]));
 }
 
-void addObject(int32_t xy, int32_t *field) {
+void addObject(int32_t xy, float *field) {
   int32_t x = xy >> 16;
   int32_t y = xy & 0xffff;
 
@@ -76,25 +76,25 @@ void addObject(int32_t xy, int32_t *field) {
 
   for (int32_t yy = top; yy <= bottom; yy++)
     for (int32_t xx = left; xx <= right; xx++)
-      field[y * X_SIZE + x] += CLICK_TEMP;
+      field[yy * X_SIZE + xx] += CLICK_TEMP;
 }
 
 void app() {
-  int32_t field1[X_SIZE * Y_SIZE] = {};
-  int32_t field2[X_SIZE * Y_SIZE] = {};
-  int32_t *prev = field1;
-  int32_t *next = field2;
+  float field1[X_SIZE * Y_SIZE] = {};
+  float field2[X_SIZE * Y_SIZE] = {};
+  float *prev = field1;
+  float *next = field2;
 
   while (1) {
+    while (simHasClick())
+      addObject(simGetClick(), prev);
+
     recalculateField(prev, next);
     drawField(next);
     simFlush();
 
-    int32_t *tmp = prev;
+    float *tmp = prev;
     prev = next;
     next = tmp;
-
-    while (simHasClick())
-      addObject(simGetClick(), prev);
   }
 }
