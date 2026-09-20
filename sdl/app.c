@@ -1,8 +1,11 @@
 #include "sim.h"
 #include <stdint.h>
 
-#define X_SIZE SIM_X_SIZE
-#define Y_SIZE SIM_Y_SIZE
+#define X_SIZE SIM_X_SIZE / 4
+#define Y_SIZE SIM_Y_SIZE / 4
+
+#define CLICK_TEMP 150
+#define CLICK_RAD 100
 
 int32_t colorByTemp(int32_t temp) {
   if (temp <= 10)
@@ -39,41 +42,41 @@ int32_t colorByTemp(int32_t temp) {
 
 int32_t calcTemp(int32_t x, int32_t y, int32_t *field) {
   int32_t currT = field[y * X_SIZE + x];
-  int32_t top, left, right, bottom;
 
-  if (y > 0)
-    top = field[(y - 1) * X_SIZE + x];
-  else
-    top = currT;
+  int32_t top = y > 0 ? field[(y - 1) * X_SIZE + x] : currT;
+  int32_t bottom = y < Y_SIZE - 1 ? field[(y + 1) * X_SIZE + x] : currT;
+  int32_t left = x > 0 ? field[y * X_SIZE + x - 1] : currT;
+  int32_t right = x < X_SIZE - 1 ? field[y * X_SIZE + x + 1] : currT;
 
-  if (y < Y_SIZE - 1)
-    bottom = field[(y + 1) * X_SIZE + x];
-  else
-    bottom = currT;
-
-  if (x > 0)
-    left = field[y * X_SIZE + x - 1];
-  else
-    left = currT;
-
-  if (x < X_SIZE - 1)
-    right = field[y * X_SIZE + x + 1];
-  else
-    right = currT;
-
-  return currT + (top + bottom + left + right - 4 * currT);
+  return currT + (top + bottom + left + right - 4 * currT) / 4;
 }
 
 void recalculateField(int32_t *current, int32_t *next) {
   for (int y = 0; y < Y_SIZE; y++)
-    for (int x = 0; x < X_SIZE; x++)
-      next[y * X_SIZE + x] = calcTemp(x, y, current);
+    for (int x = 0; x < X_SIZE; x++) {
+      int32_t temp = calcTemp(x, y, current);
+      next[y * X_SIZE + x] = temp;
+    }
 }
 
 void drawField(int32_t *field) {
   for (int y = 0; y < Y_SIZE; y++)
     for (int x = 0; x < X_SIZE; x++)
       simPutPixel(x, y, colorByTemp(field[y * X_SIZE + x]));
+}
+
+void addObject(int32_t xy, int32_t *field) {
+  int32_t x = xy >> 16;
+  int32_t y = xy & 0xffff;
+
+  int32_t top = y - CLICK_RAD >= 0 ? y - CLICK_RAD : 0;
+  int32_t bottom = y + CLICK_RAD < Y_SIZE ? y + CLICK_RAD : Y_SIZE - 1;
+  int32_t left = x - CLICK_RAD >= 0 ? x - CLICK_RAD : 0;
+  int32_t right = x + CLICK_RAD < X_SIZE ? x + CLICK_RAD : X_SIZE - 1;
+
+  for (int32_t yy = top; yy <= bottom; yy++)
+    for (int32_t xx = left; xx <= right; xx++)
+      field[y * X_SIZE + x] += CLICK_TEMP;
 }
 
 void app() {
@@ -83,12 +86,15 @@ void app() {
   int32_t *next = field2;
 
   while (1) {
-    drawField(prev);
-    simFlush();
     recalculateField(prev, next);
+    drawField(next);
+    simFlush();
 
     int32_t *tmp = prev;
     prev = next;
     next = tmp;
+
+    while (simHasClick())
+      addObject(simGetClick(), prev);
   }
 }
