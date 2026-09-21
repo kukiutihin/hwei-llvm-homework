@@ -2,11 +2,11 @@
 #include <math.h>
 #include <stdint.h>
 
-#define X_SIZE SIM_X_SIZE / 2
-#define Y_SIZE SIM_Y_SIZE / 2
+#define X_SIZE SIM_X_SIZE / 4
+#define Y_SIZE SIM_Y_SIZE / 4
 
 #define CLICK_TEMP 90
-#define CLICK_RAD 60
+#define CLICK_RAD 30
 
 #define COLORS_CNT 8
 
@@ -79,7 +79,29 @@ void drawField(float *field) {
       simPutPixel(x, y, colorByTemp(field[y * X_SIZE + x]));
 }
 
-void addObject(uint32_t xy, float *field) {
+void addObjectCircle(uint32_t xy, float *field) {
+  uint32_t cx = xy >> 16;
+  uint32_t cy = xy & 0xffff;
+  int x, y;
+
+  for (x = 0, y = CLICK_RAD; x < y; x++)
+    for (; y >= 0; y--) {
+      field[(cy + y) * X_SIZE + (cx + x)] += CLICK_TEMP;
+      field[(cy - y) * X_SIZE + (cx + x)] += CLICK_TEMP;
+      field[(cy + y) * X_SIZE + (cx - x)] += CLICK_TEMP;
+      field[(cy - y) * X_SIZE + (cx - x)] += CLICK_TEMP;
+
+      field[(cy + x) * X_SIZE + (cx + y)] += CLICK_TEMP;
+      field[(cy - x) * X_SIZE + (cx + y)] += CLICK_TEMP;
+      field[(cy + x) * X_SIZE + (cx - y)] += CLICK_TEMP;
+      field[(cy - x) * X_SIZE + (cx - y)] += CLICK_TEMP;
+
+      if (x * x + (y - 1) * (y - 1) < CLICK_RAD * CLICK_RAD)
+        break;
+    }
+}
+
+void addObjectRectangle(uint32_t xy, float *field) {
   uint32_t x = xy >> 16;
   uint32_t y = xy & 0xffff;
 
@@ -101,7 +123,7 @@ void app() {
 
   while (1) {
     while (simHasClick())
-      addObject(simGetClick(), prev);
+      addObjectRectangle(simGetClick(), prev);
 
     recalculateField(prev, next);
     drawField(next);
