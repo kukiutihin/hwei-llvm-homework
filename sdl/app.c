@@ -1,46 +1,60 @@
 #include "sim.h"
+#include <math.h>
 #include <stdint.h>
 
-#define X_SIZE SIM_X_SIZE / 4
-#define Y_SIZE SIM_Y_SIZE / 4
+#define X_SIZE SIM_X_SIZE / 2
+#define Y_SIZE SIM_Y_SIZE / 2
 
-#define CLICK_TEMP 150
-#define CLICK_RAD 30
+#define CLICK_TEMP 90
+#define CLICK_RAD 60
 
-int32_t colorByTemp(float temp) {
-  if (temp <= 10)
-    return 0x000A1128;
-  else if (temp <= 20)
-    return 0x001C3166;
-  else if (temp <= 30)
-    return 0x00005F9E;
-  else if (temp <= 40)
-    return 0x000087B3;
-  else if (temp <= 50)
-    return 0x0000A896;
-  else if (temp <= 60)
-    return 0x0002C39A;
-  else if (temp <= 70)
-    return 0x00A2E8DD;
-  else if (temp <= 80)
-    return 0x00F4F1DE;
-  else if (temp <= 90)
-    return 0x00F2CC8F;
-  else if (temp <= 100)
-    return 0x00EAB64D;
-  else if (temp <= 110)
-    return 0x00F38148;
-  else if (temp <= 120)
-    return 0x00E0533C;
-  else if (temp <= 130)
-    return 0x00C1121F;
-  else if (temp <= 140)
-    return 0x00780000;
-  else
-    return 0x00FDF0ED;
+#define COLORS_CNT 8
+
+static const uint32_t colors[10] = {0x000004, 0x160B39, 0x420A68, 0x6A176E,
+                                    0x932667, 0xBA3655, 0xDD513A, 0xF37812,
+                                    0xFCA50A, 0xF6E8A0};
+
+float rgb2linear(uint32_t channel) {
+  float s = channel / 255.0f;
+  return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4);
 }
 
-float calcTemp(int32_t x, int32_t y, float *field) {
+uint32_t linear2rgb(float linear) {
+  float s = linear <= 0.0031308 ? linear * 12.92
+                                : 1.055 * pow(linear, 1.0 / 2.4) - 0.055;
+  return (uint8_t)(s * 255);
+}
+
+uint32_t interpolate(uint32_t color1, uint32_t color2, float t) {
+  // 0x[__ rr gg bb]
+  float r1 = rgb2linear(color1 >> 16 & 0xff);
+  float g1 = rgb2linear(color1 >> 8 & 0xff);
+  float b1 = rgb2linear(color1 & 0xff);
+
+  float r2 = rgb2linear(color2 >> 16 & 0xff);
+  float g2 = rgb2linear(color2 >> 8 & 0xff);
+  float b2 = rgb2linear(color2 & 0xff);
+
+  uint32_t r = linear2rgb((r2 - r1) * t + r1);
+  uint32_t g = linear2rgb((g2 - g1) * t + g1);
+  uint32_t b = linear2rgb((b2 - b1) * t + b1);
+
+  return (r << 16) | (g << 8) | b;
+}
+
+uint32_t colorByTemp(float temp) {
+  if (temp >= 100.0)
+    return colors[COLORS_CNT - 1];
+
+  // 96.8 -> 9.68 => interpolate(9th, 10th, 0.68)
+  float t = fmax(0.0, fmin(temp, 100.0)) / 10.0;
+  uint32_t k = t;
+  uint32_t color1 = colors[k];
+  uint32_t color2 = colors[k + 1];
+  return interpolate(color1, color2, t - (float)k);
+}
+
+float calcTemp(uint32_t x, uint32_t y, float *field) {
   float currT = field[y * X_SIZE + x];
 
   float top = y > 0 ? field[(y - 1) * X_SIZE + x] : currT;
@@ -52,30 +66,30 @@ float calcTemp(int32_t x, int32_t y, float *field) {
 }
 
 void recalculateField(float *current, float *next) {
-  for (int y = 0; y < Y_SIZE; y++)
-    for (int x = 0; x < X_SIZE; x++) {
+  for (uint32_t y = 0; y < Y_SIZE; y++)
+    for (uint32_t x = 0; x < X_SIZE; x++) {
       float temp = calcTemp(x, y, current);
       next[y * X_SIZE + x] = temp;
     }
 }
 
 void drawField(float *field) {
-  for (int y = 0; y < Y_SIZE; y++)
-    for (int x = 0; x < X_SIZE; x++)
+  for (uint32_t y = 0; y < Y_SIZE; y++)
+    for (uint32_t x = 0; x < X_SIZE; x++)
       simPutPixel(x, y, colorByTemp(field[y * X_SIZE + x]));
 }
 
-void addObject(int32_t xy, float *field) {
-  int32_t x = xy >> 16;
-  int32_t y = xy & 0xffff;
+void addObject(uint32_t xy, float *field) {
+  uint32_t x = xy >> 16;
+  uint32_t y = xy & 0xffff;
 
-  int32_t top = y - CLICK_RAD >= 0 ? y - CLICK_RAD : 0;
-  int32_t bottom = y + CLICK_RAD < Y_SIZE ? y + CLICK_RAD : Y_SIZE - 1;
-  int32_t left = x - CLICK_RAD >= 0 ? x - CLICK_RAD : 0;
-  int32_t right = x + CLICK_RAD < X_SIZE ? x + CLICK_RAD : X_SIZE - 1;
+  uint32_t top = y - CLICK_RAD >= 0 ? y - CLICK_RAD : 0;
+  uint32_t bottom = y + CLICK_RAD < Y_SIZE ? y + CLICK_RAD : Y_SIZE - 1;
+  uint32_t left = x - CLICK_RAD >= 0 ? x - CLICK_RAD : 0;
+  uint32_t right = x + CLICK_RAD < X_SIZE ? x + CLICK_RAD : X_SIZE - 1;
 
-  for (int32_t yy = top; yy <= bottom; yy++)
-    for (int32_t xx = left; xx <= right; xx++)
+  for (uint32_t yy = top; yy <= bottom; yy++)
+    for (uint32_t xx = left; xx <= right; xx++)
       field[yy * X_SIZE + xx] += CLICK_TEMP;
 }
 
