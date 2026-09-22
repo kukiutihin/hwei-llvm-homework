@@ -123,7 +123,7 @@ void app() {
 
   while (1) {
     while (simHasClick())
-      addObjectRectangle(simGetClick(), prev);
+      addObjectCircle(simGetClick(), prev);
 
     recalculateField(prev, next);
     drawField(next);

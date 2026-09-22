@@ -3,4 +3,8 @@
 !*/
 
 *.ll
+!sdl/*.ll
+
 *.o
+
+.DS_Store
