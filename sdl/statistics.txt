@@ -1,0 +1,136 @@
+5 most frequent instruction subsequent with window size 1:
+	3719010:
+		fptrunc <- call
+
+	3719007:
+		fcmp <- fpext
+
+	3719007:
+		br <- fcmp
+
+	2479338:
+		fsub <- fptrunc
+
+	2479338:
+		fdiv <- fadd
+
+
+5 most frequent instruction subsequent with window size 2:
+	3719007:
+		fcmp <- fpext
+		br <- fcmp
+
+	2479338:
+		br <- fcmp
+		fdiv <- fpext
+
+	2479338:
+		fdiv <- fpext
+		fadd <- fpext
+
+	2479338:
+		fpext <- fdiv
+		fcmp <- fpext
+
+	2479338:
+		uitofp <- and
+		fdiv <- uitofp
+
+
+5 most frequent instruction subsequent with window size 3:
+	2479338:
+		fcmp <- fpext
+		br <- fcmp
+		fdiv <- fpext
+
+	2479338:
+		fdiv <- fpext
+		fadd <- fpext
+		fdiv <- fadd
+
+	2479338:
+		fdiv <- fadd
+		call <- fdiv
+		fptrunc <- fdiv
+
+	2479338:
+		fdiv <- uitofp
+		fpext <- fdiv
+		fcmp <- fpext
+
+	2479338:
+		uitofp <- and
+		fdiv <- uitofp
+		fpext <- fdiv
+
+
+5 most frequent instruction subsequent with window size 4:
+	2479338:
+		br <- fcmp
+		fdiv <- fpext
+		fadd <- fpext
+		fdiv <- fadd
+
+	2479338:
+		fpext <- fdiv
+		fcmp <- fpext
+		br <- fcmp
+		fdiv <- fpext
+
+	2479338:
+		uitofp <- and
+		fdiv <- uitofp
+		fpext <- fdiv
+		fcmp <- fpext
+
+	2479338:
+		fcmp <- fpext
+		br <- fcmp
+		fdiv <- fpext
+		fadd <- fpext
+
+	2479338:
+		fdiv <- uitofp
+		fpext <- fdiv
+		fcmp <- fpext
+		br <- fcmp
+
+
+5 most frequent instruction subsequent with window size 5:
+	2479338:
+		fdiv <- fpext
+		fadd <- fpext
+		fdiv <- fadd
+		call <- fdiv
+		fptrunc <- fdiv
+
+	2479338:
+		uitofp <- and
+		fdiv <- uitofp
+		fpext <- fdiv
+		fcmp <- fpext
+		br <- fcmp
+
+	2479338:
+		fcmp <- fpext
+		br <- fcmp
+		fdiv <- fpext
+		fadd <- fpext
+		fdiv <- fadd
+
+	2479338:
+		br <- fcmp
+		fdiv <- fpext
+		fadd <- fpext
+		fdiv <- fadd
+		call <- fdiv
+
+	2479338:
+		fadd <- fpext
+		fdiv <- fadd
+		call <- fdiv
+		fptrunc <- fdiv
+		fptrunc <- call
+
+
+

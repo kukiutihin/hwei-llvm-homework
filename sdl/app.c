@@ -2,8 +2,8 @@
 #include <math.h>
 #include <stdint.h>
 
-#define X_SIZE SIM_X_SIZE / 4
-#define Y_SIZE SIM_Y_SIZE / 4
+#define X_SIZE SIM_X_SIZE / 2
+#define Y_SIZE SIM_Y_SIZE / 2
 
 #define CLICK_TEMP 90
 #define CLICK_RAD 30

@@ -15,10 +15,16 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             clang
+            llvm
             SDL2
             clang-tools
             gnumake
           ];
+
+          shellHook = ''
+            export CPATH="${pkgs.SDL2.dev}/include:$CPATH"
+            export CPATH="${pkgs.llvm.dev}/include:$CPATH"
+          '';
         };
       });
 }

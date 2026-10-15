@@ -7,4 +7,5 @@
 
 *.o
 
+.clangd
 .DS_Store
