@@ -64,3 +64,19 @@ And you will get `statistics.txt`
 		fptrunc <- fdiv
 		fptrunc <- call
 ```
+
+### HW 3. IR Generator 
+
+To get IR-generator written in cpp, use:
+```bash
+cd app
+make gen-gen
+```
+You will get `ir-gen.cpp` in `irgen` directory.
+
+Next to compile and run graphical app from `ir-gen.cpp` use:
+
+```bash
+make gen-ir
+./gen-ir
+```
