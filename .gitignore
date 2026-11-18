@@ -2,10 +2,13 @@
 !*.*
 !*/
 
+build
+
+!Makefile
+
 *.ll
-!sdl/*.ll
+log.txt
 
 *.o
 
-.clangd
 .DS_Store

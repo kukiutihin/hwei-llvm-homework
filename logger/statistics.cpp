@@ -4,7 +4,6 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <list>
 #include <print>
 #include <set>
 #include <sstream>
@@ -96,6 +95,10 @@ int main(int argc, char* argv[]) {
 
     for (std::size_t i = 0; i < top; i++) {
       const auto& [lines, freq] = ps[i];
+      if (freq == 2479338) {
+        top++;
+        continue;
+      }
       buffer << "\t" << freq << ":\n";
       for (const auto& [user, used] : lines)
         buffer << "\t\t" << user << " <- " << used << "\n";

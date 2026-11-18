@@ -2,10 +2,16 @@
 
 #### Build and run 
 ```bash
-cd ./sdl
-make app-opt 
-./app-opt
+cmake -B build
+cmake --build build --target app
+./build/application/app
 ```
+
+To get LLVM IR for `app.c`: 
+```bash
+cmake --build build --target emit-ll
+```
+it will be located at `build/application/ll/app.ll`
 
 #### Example
 
@@ -16,14 +22,19 @@ make app-opt
 
 #### Build and run 
 
-
+First you need to collect logs from application. Run the code below use application a little.
 ```bash
-cd ./sdl
 make app-log 
 ./app-log > log.txt
+```
+
+To convert logs into statistics run 
+```bash
 make statistics
 ```
-And you will get `statistics.txt`
+And you will get `statistics.txt`.
+
+You also can specify sliding window size in `Makefile`, change variable which named `STAT_WINDOWS`.
 
 #### Example
 
@@ -69,7 +80,6 @@ And you will get `statistics.txt`
 
 To get IR-generator written in cpp, use:
 ```bash
-cd app
 make gen-gen
 ```
 You will get `ir-gen.cpp` in `irgen` directory.
