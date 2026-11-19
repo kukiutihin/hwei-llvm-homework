@@ -25,5 +25,7 @@ endif()
 find_package(LLVM REQUIRED CONFIG)
 find_package(SDL2 REQUIRED)
 
-add_subdirectory(application)
+add_subdirectory(c_app)
 add_subdirectory(asm/asm_to_ir)
+add_subdirectory(skib67c)
+add_subdirectory(skib_app)

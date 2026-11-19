@@ -1,0 +1,76 @@
+xSize = 1920
+ySize = 1080
+clickTemp = 90
+clickRad = 30
+
+interpolate (color1: Uint, color2: Uint, t: Double) : Uint =
+  r1 = Std.rgb2linear (color1 >> 16 & 0xff)
+  g1 = Std.rgb2linear (color1 >> 8 & 0xff)
+  b1 = Std.rgb2linear(color1 & 0xff)
+  
+  r2 = Std.rgb2linear (color2 >> 16 & 0xff)
+  g2 = Std.rgb2linear (color2 >> 8 & 0xff)
+  b2 = Std.rgb2linear (color2 & 0xff)
+
+  r = Std.linear2rgb ((r2 - r1) * t + r1)
+  g = Std.linear2rgb ((g2 - g1) * t + g1)
+  b = Std.linear2rgb ((b2 - b1) * t + b1)
+
+  (r << 16) | (g << 8) | b
+
+colorByTemp (temp: Double) : Uint =
+  if temp >= 100.0 then colors[colorsCount - 1]
+  else 
+    t = Std.fmax (0.0, Std.fmin (temp, 100.0)) / 10.0
+    k = t
+    color1 = colors[k]
+    color2 = colors[k + 1]
+    interpolate (color1, color2, t - k)
+
+calcTemp (x: Uint, y: Uint, field: Array[Double]): Double =
+  currT = field[y * xSize + x]
+  top = if y > 0 then field[(y - 1) * xSize + x] else currT
+  bottom = if y < ySize - 1 then field[(y + 1) * xSize + x] else currT
+  left = if x > 0 then field[y * xSize + x - 1] else currT
+  right = if x < xSize - 1 then field[y * xSize + x + 1] else currT
+  currT + 0.25 * (top + bottom + left + right - 4.0 * currT)
+
+recalculateField (current: Array[Float], next: Array[Float]) : () = 
+  y = (0 .. ySize)
+  x = (0 .. xSize)
+  temp = calcTemp (x, y, current)
+  next[y * xSize + x] = temp
+
+drawField (field: Array[Float]) : () = 
+  y = (0 .. ySize)
+  x = (0 .. xSize)
+  Std.simPutPixel (x, y, colorByTemp (field[y * xSize + x]))
+
+addObjectRectangle (xy: Uint, field: Array[Float]) : () = 
+  x = xy >> 16 
+  y = xy & 0xffff 
+
+  top = if y - clickRad >= 0 then y - clickRad else 0 
+  bottom = if y + clickRad < ySize then y + clickRad else ySize - 1 
+  left = if x - clickRad >= 0 then x - clickRad else 0 
+  right = if x + clickRad < xSize then x + clickRad else xSize - 1 
+
+  yy = (top ..= bottom) 
+  xx = (left ..= right) 
+  field[yy * xSize + xx] = clickTemp
+
+handleClick (a : Array[Float]) : () = 
+  if Std.simHasClick then 
+    addObjectCircle (Std.simGetClick, a); 
+    handlClick (a)
+  else ()
+
+app : () = 
+  field1 = array(xSize * ySize)
+  field2 = array(xSize * ySize)
+  f (prev, next) = 
+    handleClick;
+    drawField (next);
+    recalculateField (prev, next);
+    f (next, prev)
+  f (field1, field2)
