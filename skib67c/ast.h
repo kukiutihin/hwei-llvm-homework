@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -45,7 +47,7 @@ struct FuncDecl {
 
 struct FuncDeclExpr {
   FuncDecl decl;
-  std::optional<std::unique_ptr<Expr>> next;
+  std::unique_ptr<Expr> next;
 };
 
 struct IfExpr {
@@ -70,7 +72,7 @@ struct True {};
 struct False {};
 
 struct HexLit {
-  std::int64_t value;
+  std::uint64_t value;
 };
 
 struct IntLit {
@@ -81,7 +83,7 @@ struct FloatLit {
   double value;
 };
 
-using Literal = std::variant<HexLit, FloatLit, IntLit, True, False>;
+using Literal = std::variant<Skib, HexLit, FloatLit, IntLit, True, False>;
 
 struct InParens {
   std::unique_ptr<Expr> expr;
@@ -89,34 +91,67 @@ struct InParens {
 
 using PrimaryExpr = std::variant<Call, Subscript, InParens, Literal, QualIdent>;
 
+enum class UnaryOp { Neg, Not, BitNot };
+
 struct UnaryExpr {
-  std::unique_ptr<UnaryExpr> left;
-  PrimaryExpr right;
+  std::vector<UnaryOp> ops;
+  PrimaryExpr primary;
+};
+
+enum class MulOp { Mul, Div, Mod };
+
+struct MulRhs {
+  MulOp op;
+  UnaryExpr rhs;
 };
 
 struct MulExpr {
   UnaryExpr left;
-  std::vector<UnaryExpr> right;
+  std::vector<MulRhs> right;
+};
+
+enum class AddOp { Add, Sub };
+
+struct AddRhs {
+  AddOp op;
+  MulExpr rhs;
 };
 
 struct AddExpr {
   MulExpr left;
-  std::vector<MulExpr> right;
+  std::vector<AddRhs> right;
 };
 
+enum class ShiftOp { Shl, Shr };
+struct ShiftRhs {
+  ShiftOp op;
+  AddExpr rhs;
+};
 struct ShiftExpr {
   AddExpr left;
-  std::vector<AddExpr> right;
+  std::vector<ShiftRhs> right;
 };
 
+enum class CmpOp { Lt, Le, Gt, Ge };
+
+struct CmpRhs {
+  CmpOp op;
+  ShiftExpr rhs;
+};
 struct CmpExpr {
   ShiftExpr left;
-  std::vector<ShiftExpr> right;
+  std::vector<CmpRhs> right;
+};
+
+enum class EqOp { Eq, Ne };
+struct EqRhs {
+  EqOp op;
+  CmpExpr rhs;
 };
 
 struct EqExpr {
   CmpExpr left;
-  std::vector<CmpExpr> right;
+  std::vector<EqRhs> right;
 };
 
 struct BitAndExpr {
@@ -134,9 +169,16 @@ struct BitOrExpr {
   std::vector<BitXorExpr> right;
 };
 
+enum class RangeOp { Exclusive, Inclusive };
+
+struct RangeRhs {
+  RangeOp op;
+  BitOrExpr rhs;
+};
+
 struct BinExpr {
   BitOrExpr left;
-  std::optional<BitOrExpr> right;
+  std::optional<RangeRhs> right;
 };
 
 using ValueExpr = std::variant<IfExpr, BinExpr>;
@@ -153,7 +195,10 @@ struct MutExpr {
   ValueExpr value;
 };
 
-using BindExpr = std::variant<ValueExpr, MutExpr, Assignment, FuncDeclExpr>;
+struct SkibExpr;
+
+using BindExpr =
+    std::variant<ValueExpr, MutExpr, Assignment, FuncDeclExpr>;
 
 struct Expr {
   std::vector<BindExpr> binds;

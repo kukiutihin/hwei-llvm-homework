@@ -1,9 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
 project(llvm LANGUAGES C CXX)
+include(CTest)
 
 include(FetchContent)
 FetchContent_Declare(lexy URL https://lexy.foonathan.net/download/lexy-src.zip)
 FetchContent_MakeAvailable(lexy)
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.8.1 
+)
+FetchContent_MakeAvailable(Catch2)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,7 +33,6 @@ endif()
 find_package(LLVM REQUIRED CONFIG)
 find_package(SDL2 REQUIRED)
 
-add_subdirectory(c_app)
+add_subdirectory(app)
 add_subdirectory(asm/asm_to_ir)
 add_subdirectory(skib67c)
-# add_subdirectory(skib_app)

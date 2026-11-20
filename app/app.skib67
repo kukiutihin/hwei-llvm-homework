@@ -6,7 +6,7 @@ clickRad = 30
 interpolate (color1: Uint, color2: Uint, t: Float) : Uint =
   r1 = Std.rgb2linear (color1 >> 16 & 0xff)
   g1 = Std.rgb2linear (color1 >> 8 & 0xff)
-  b1 = Std.rgb2linear(color1 & 0xff)
+  b1 = Std.rgb2linear (color1 & 0xff)
   
   r2 = Std.rgb2linear (color2 >> 16 & 0xff)
   g2 = Std.rgb2linear (color2 >> 8 & 0xff)
@@ -27,7 +27,7 @@ colorByTemp (temp: Float) : Uint =
     color2 = colors[k + 1]
     interpolate (color1, color2, t - k)
 
-calcTemp (x: Uint, y: Uint, field: Array[Float]): Float=
+calcTemp (x: Uint, y: Uint, field: Array[Float]): Float =
   currT = field[y * xSize + x]
   top = if y > 0 then field[(y - 1) * xSize + x] else currT
   bottom = if y < ySize - 1 then field[(y + 1) * xSize + x] else currT
@@ -39,7 +39,7 @@ recalculateField (current: Array[Float], next: Array[Float]) : () =
   y = (0 .. ySize)
   x = (0 .. xSize)
   temp = calcTemp (x, y, current)
-  next[y * xSize + x] = temp
+  next[y * xSize + x] *= temp
 
 drawField (field: Array[Float]) : () = 
   y = (0 .. ySize)
@@ -57,7 +57,7 @@ addObjectRectangle (xy: Uint, field: Array[Float]) : () =
 
   yy = (top ..= bottom) 
   xx = (left ..= right) 
-  field[yy * xSize + xx] = clickTemp
+  field[yy * xSize + xx] *= clickTemp
 
 handleClick (a : Array[Float]) : () = 
   if Std.simHasClick then 
@@ -66,11 +66,13 @@ handleClick (a : Array[Float]) : () =
   else ()
 
 app : () = 
-  field1 = array(xSize * ySize)
-  field2 = array(xSize * ySize)
-  f (prev, next) = 
+  field1 = Std.array (xSize * ySize)
+  field2 = Std.array (xSize * ySize)
+  f (prev: Array[Float], next: Array[Float]) : () = 
     handleClick;
     drawField (next);
     recalculateField (prev, next);
     f (next, prev)
   f (field1, field2)
+
+main : () = Std.simInit; app; Std.simExit
