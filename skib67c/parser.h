@@ -26,6 +26,7 @@ enum class TokenKind {
   Ident,
   ModIdent,
   IntLit,
+  UintLit,
   HexLit,
   FloatLit,
 
@@ -40,6 +41,7 @@ enum class TokenKind {
   KwFloat,
   KwBool,
   KwArray,
+  KwArrayAlloc,
 
   // Punctuation & Operators
   LParen,
@@ -142,6 +144,8 @@ class Lexer {
           kind = TokenKind::KwThen;
         else if (text == "else")
           kind = TokenKind::KwElse;
+        else if (text == "array")
+          kind = TokenKind::KwArrayAlloc;
         tokens.push_back({kind, text, pos});
         continue;
       }
@@ -197,6 +201,10 @@ class Lexer {
             }
             tokens.push_back(
                 {TokenKind::FloatLit, src.substr(start, idx - start), pos});
+          } else if (peek() == 'u' || peek() == 'U') {
+            advance();
+            tokens.push_back(
+                {TokenKind::UintLit, src.substr(start, idx - start), pos});
           } else {
             tokens.push_back(
                 {TokenKind::IntLit, src.substr(start, idx - start), pos});
@@ -556,11 +564,10 @@ class RecursiveDescentParser {
       auto decl = parseFuncDecl();
       if (!decl) return std::nullopt;
 
-      std::unique_ptr<Expr> next;
       auto cont = parseExpr();
       if (!cont) return std::nullopt;
-      next = std::make_unique<Expr>(std::move(*cont));
-      return BindExpr{FuncDeclExpr{fnPos, std::move(*decl), std::move(next)}};
+      return BindExpr{FuncDeclExpr{fnPos, std::move(*decl),
+                                   std::make_unique<Expr>(std::move(*cont))}};
     }
 
     if (isAssignmentLookahead()) {
@@ -609,6 +616,7 @@ class RecursiveDescentParser {
   }
 
   std::optional<ValueExpr> parseValueExpr() {
+    Position startPos = peek().pos;
     if (match(TokenKind::KwIf)) {
       auto cond = parseExpr();
       if (!cond) return std::nullopt;
@@ -619,16 +627,17 @@ class RecursiveDescentParser {
       auto elseBranch = parseExpr();
       if (!elseBranch) return std::nullopt;
 
-      return ValueExpr{IfExpr{
-          std::make_unique<Expr>(std::move(*cond)),
-          std::make_unique<Expr>(std::move(*thenBranch)),
-          std::make_unique<Expr>(std::move(*elseBranch)),
-      }};
+      return ValueExpr{startPos,
+                       IfExpr{
+                           std::make_unique<Expr>(std::move(*cond)),
+                           std::make_unique<Expr>(std::move(*thenBranch)),
+                           std::make_unique<Expr>(std::move(*elseBranch)),
+                       }};
     }
 
     auto bitOr = parseBitOr();
     if (!bitOr) return std::nullopt;
-    return ValueExpr{std::move(*bitOr)};
+    return ValueExpr{startPos, std::move(*bitOr)};
   }
 
   std::optional<BitOrExpr> parseBitOr() {
@@ -785,6 +794,32 @@ class RecursiveDescentParser {
       return PrimaryExpr{InParens{std::make_unique<Expr>(std::move(*inner))}};
     }
 
+    // Array initializer: [ expr, expr, ... ]
+    if (check(TokenKind::LBracket)) {
+      Position arrPos = advance().pos;
+      std::vector<Expr> elements;
+      if (!check(TokenKind::RBracket)) {
+        do {
+          auto elem = parseExpr();
+          if (!elem) return std::nullopt;
+          elements.push_back(std::move(*elem));
+        } while (match(TokenKind::Comma));
+      }
+      if (!expect(TokenKind::RBracket, "']'")) return std::nullopt;
+      return PrimaryExpr{ArrayLit{arrPos, std::move(elements)}};
+    }
+
+    // Array allocation: array(size)
+    if (check(TokenKind::KwArrayAlloc)) {
+      Position arrPos = advance().pos;
+      if (!expect(TokenKind::LParen, "'('")) return std::nullopt;
+      auto sizeExpr = parseExpr();
+      if (!sizeExpr) return std::nullopt;
+      if (!expect(TokenKind::RParen, "')'")) return std::nullopt;
+      return PrimaryExpr{
+          ArrayAlloc{arrPos, std::make_unique<Expr>(std::move(*sizeExpr))}};
+    }
+
     if (check(TokenKind::KwTrue)) {
       return PrimaryExpr{Literal{True{advance().pos}}};
     }
@@ -803,6 +838,13 @@ class RecursiveDescentParser {
       std::int64_t val = 0;
       std::from_chars(t.text.data(), t.text.data() + t.text.size(), val, 10);
       return PrimaryExpr{Literal{IntLit{t.pos, val}}};
+    }
+    if (check(TokenKind::UintLit)) {
+      Token t = advance();
+      std::uint64_t val = 0;
+      std::from_chars(t.text.data(), t.text.data() + t.text.size() - 1, val,
+                      10);
+      return PrimaryExpr{Literal{UintLit{t.pos, val}}};
     }
     if (check(TokenKind::FloatLit)) {
       Token t = advance();

@@ -29,8 +29,8 @@ void parseErr(std::string code) {
 }
 
 const BitOrExpr& unwrapBin(const ValueExpr& v) {
-  REQUIRE(std::holds_alternative<BitOrExpr>(v));
-  return std::get<BitOrExpr>(v);
+  REQUIRE(std::holds_alternative<BitOrExpr>(v.expr));
+  return std::get<BitOrExpr>(v.expr);
 }
 
 const PrimaryExpr& unwrapPrimary(const BitOrExpr& b) {
@@ -237,7 +237,7 @@ TEST_CASE("if-then-else with multi-expression branches", "[parser][if]") {
   REQUIRE(prog.size() == 1);
   auto& fn = std::get<FuncDecl>(prog[0]);
   auto& val = std::get<ValueExpr>(fn.expr->binds[0]);
-  REQUIRE(std::holds_alternative<IfExpr>(val));
+  REQUIRE(std::holds_alternative<IfExpr>(val.expr));
 }
 
 // Sequential if-then-else bindings (left is outside bottom)
@@ -255,13 +255,13 @@ TEST_CASE("Sequential if-then-else value bindings",
   // First binding is `bottom`
   auto& bottom = std::get<Assignment>(fn.expr->binds[0]);
   REQUIRE(bottom.ident.ident == "bottom");
-  REQUIRE(std::holds_alternative<IfExpr>(bottom.expr));
+  REQUIRE(std::holds_alternative<IfExpr>(bottom.expr.expr));
 
   // `left` must be in `bottom.next`, NOT swallowed into `bottom`'s else-branch
   REQUIRE(bottom.next != nullptr);
   auto& left = std::get<Assignment>(bottom.next->binds[0]);
   REQUIRE(left.ident.ident == "left");
-  REQUIRE(std::holds_alternative<IfExpr>(left.expr));
+  REQUIRE(std::holds_alternative<IfExpr>(left.expr.expr));
 
   // Final expression `bottom + left` is in `left.next`
   REQUIRE(left.next != nullptr);
@@ -287,6 +287,7 @@ TEST_CASE("Literals", "[parser][literals]") {
     parseErr("f = 0.");
   }
 }
+
 // All binary & unary operators and full precedence hierarchy (per spec)
 TEST_CASE("Operator precedence and unary/binary operators",
           "[parser][precedence]") {
@@ -306,7 +307,7 @@ TEST_CASE("Operator precedence and unary/binary operators",
     // a | b ^ c & d == e < f << g + h * -i
     // Each operator should nest strictly inside the one to its left.
     auto prog = parseOk("x = a | b ^ c & d == e < f << g + h * -i");
-    const auto& bitOr = std::get<BitOrExpr>(std::get<ValDecl>(prog[0]).expr);
+    const auto& bitOr = unwrapBin(std::get<ValDecl>(prog[0]).expr);
     REQUIRE(bitOr.right.size() == 1);  // a | (...)
 
     const auto& bitXor = bitOr.right[0];
@@ -342,7 +343,7 @@ TEST_CASE("Operator precedence and unary/binary operators",
 
   SECTION("Parentheses override precedence") {
     auto prog = parseOk("x = (a + b) * c");
-    const auto& bitOr = std::get<BitOrExpr>(std::get<ValDecl>(prog[0]).expr);
+    const auto& bitOr = unwrapBin(std::get<ValDecl>(prog[0]).expr);
     const auto& mul = bitOr.left.left.left.left.left.left.left;
     REQUIRE(mul.right.size() == 1);
     REQUIRE(std::holds_alternative<InParens>(mul.left.primary));
@@ -369,9 +370,8 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     CHECK(p.column == col);
   };
 
-  auto unwrapPrimary = [](const ValueExpr& v) -> const PrimaryExpr& {
-    return std::get<BitOrExpr>(v)
-        .left.left.left.left.left.left.left.left.primary;
+  auto unwrapValPrimary = [](const ValueExpr& v) -> const PrimaryExpr& {
+    return unwrapPrimary(unwrapBin(v));
   };
 
   SECTION("FuncDecl, FuncDeclExpr, Param, Ident, and all Types") {
@@ -424,10 +424,11 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
 
     // Continuation () literal on line 3
     const auto& nextVal = std::get<ValueExpr>(nested.next->binds[0]);
-    checkPos(std::get<Skib>(std::get<Literal>(unwrapPrimary(nextVal))).pos, 3, 3);
+    checkPos(nextVal.pos, 3, 3);
+    checkPos(std::get<Skib>(std::get<Literal>(unwrapValPrimary(nextVal))).pos, 3, 3);
   }
 
-  SECTION("All Literals and ModIdent") {
+  SECTION("All Literals, ValueExpr, and ModIdent") {
     // 123456789012
     // a = 42
     // b = 3.14
@@ -447,30 +448,37 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     REQUIRE(prog.size() == 7);
 
     auto litAt = [&](std::size_t i) -> const Literal& {
-      return std::get<Literal>(unwrapPrimary(std::get<ValDecl>(prog[i]).expr));
+      return std::get<Literal>(unwrapValPrimary(std::get<ValDecl>(prog[i]).expr));
     };
 
     checkPos(std::get<ValDecl>(prog[0]).ident.pos, 1, 1);
+    checkPos(std::get<ValDecl>(prog[0]).expr.pos, 1, 5);
     checkPos(std::get<IntLit>(litAt(0)).pos, 1, 5);
 
     checkPos(std::get<ValDecl>(prog[1]).ident.pos, 2, 1);
+    checkPos(std::get<ValDecl>(prog[1]).expr.pos, 2, 5);
     checkPos(std::get<FloatLit>(litAt(1)).pos, 2, 5);
 
     checkPos(std::get<ValDecl>(prog[2]).ident.pos, 3, 1);
+    checkPos(std::get<ValDecl>(prog[2]).expr.pos, 3, 5);
     checkPos(std::get<HexLit>(litAt(2)).pos, 3, 5);
 
     checkPos(std::get<ValDecl>(prog[3]).ident.pos, 4, 1);
+    checkPos(std::get<ValDecl>(prog[3]).expr.pos, 4, 5);
     checkPos(std::get<True>(litAt(3)).pos, 4, 5);
 
     checkPos(std::get<ValDecl>(prog[4]).ident.pos, 5, 1);
+    checkPos(std::get<ValDecl>(prog[4]).expr.pos, 5, 5);
     checkPos(std::get<False>(litAt(4)).pos, 5, 5);
 
     checkPos(std::get<ValDecl>(prog[5]).ident.pos, 6, 1);
+    checkPos(std::get<ValDecl>(prog[5]).expr.pos, 6, 5);
     checkPos(std::get<Skib>(litAt(5)).pos, 6, 5);
 
     checkPos(std::get<ValDecl>(prog[6]).ident.pos, 7, 1);
+    checkPos(std::get<ValDecl>(prog[6]).expr.pos, 7, 5);
     const auto& qid =
-        std::get<QualIdent>(unwrapPrimary(std::get<ValDecl>(prog[6]).expr));
+        std::get<QualIdent>(unwrapValPrimary(std::get<ValDecl>(prog[6]).expr));
     REQUIRE(qid.module.has_value());
     checkPos(qid.module->pos, 7, 5);
     checkPos(qid.ident.pos, 7, 9);
@@ -482,7 +490,10 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     auto prog = parseOk("x = 1 < 2 << 3 + 4 * -5");
     REQUIRE(prog.size() == 1);
 
-    const auto& bitOr = std::get<BitOrExpr>(std::get<ValDecl>(prog[0]).expr);
+    const auto& valExpr = std::get<ValDecl>(prog[0]).expr;
+    checkPos(valExpr.pos, 1, 5);
+
+    const auto& bitOr = unwrapBin(valExpr);
     const auto& cmp = bitOr.left.left.left.left;
 
     // 1 < (...)

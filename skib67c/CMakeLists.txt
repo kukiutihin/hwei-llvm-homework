@@ -4,11 +4,6 @@ target_include_directories(skibc_core
   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(skibc_core INTERFACE
-  foonathan::lexy::core
-  foonathan::lexy::file
-)
-
 add_executable(skibc
   main.cpp
 )

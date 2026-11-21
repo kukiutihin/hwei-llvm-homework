@@ -7,29 +7,57 @@
 #include <variant>
 #include <vector>
 
-using Ident = std::string;
-using ModIdent = std::string;
+struct Position {
+  std::size_t line;
+  std::size_t column;
+};
+
+struct Ident {
+  std::string ident;
+  Position pos;
+};
+
+struct ModIdent {
+  std::string ident;
+  Position pos;
+};
 
 struct QualIdent {
   std::optional<ModIdent> module;
   Ident ident;
 };
 
-struct Skib {};
-struct Int {};
-struct Uint {};
-struct Float {};
-struct Bool {};
+struct Skib {
+  Position pos;
+};
+
+struct Int {
+  Position pos;
+};
+
+struct Uint {
+  Position pos;
+};
+
+struct Float {
+  Position pos;
+};
+
+struct Bool {
+  Position pos;
+};
 
 using ScalarType = std::variant<Int, Uint, Float, Bool>;
 
 struct ArrayType {
+  Position pos;
   ScalarType generic;
 };
 
 using Type = std::variant<Skib, ScalarType, ArrayType>;
 
 struct Param {
+  Position pos;
   Ident ident;
   Type type;
 };
@@ -39,6 +67,7 @@ using ParamList = std::vector<Param>;
 struct Expr;
 
 struct FuncDecl {
+  Position pos;
   Ident ident;
   ParamList paramList;
   Type type;
@@ -46,6 +75,7 @@ struct FuncDecl {
 };
 
 struct FuncDeclExpr {
+  Position pos;
   FuncDecl decl;
   std::unique_ptr<Expr> next;
 };
@@ -68,32 +98,57 @@ struct Call {
   ArgsList args;
 };
 
-struct True {};
-struct False {};
+struct True {
+  Position pos;
+};
+
+struct False {
+  Position pos;
+};
 
 struct HexLit {
+  Position pos;
   std::uint64_t value;
 };
 
 struct IntLit {
+  Position pos;
   std::int64_t value;
 };
 
 struct FloatLit {
+  Position pos;
   double value;
 };
 
-using Literal = std::variant<Skib, HexLit, FloatLit, IntLit, True, False>;
+struct UintLit {
+  Position pos;
+  std::uint64_t value;
+};
+
+using Literal = std::variant<Skib, HexLit, FloatLit, IntLit, UintLit, True, False>;
 
 struct InParens {
   std::unique_ptr<Expr> expr;
 };
 
-using PrimaryExpr = std::variant<Call, Subscript, InParens, Literal, QualIdent>;
+struct ArrayLit {
+  Position pos;
+  std::vector<Expr> elements;
+};
+
+struct ArrayAlloc {
+  Position pos;
+  std::unique_ptr<Expr> size;
+};
+
+using PrimaryExpr = std::variant<Call, Subscript, InParens, ArrayLit,
+                                 ArrayAlloc, Literal, QualIdent>;
 
 enum class UnaryOp { Neg, Not, BitNot };
 
 struct UnaryExpr {
+  Position pos;
   std::vector<UnaryOp> ops;
   PrimaryExpr primary;
 };
@@ -101,6 +156,7 @@ struct UnaryExpr {
 enum class MulOp { Mul, Div, Mod };
 
 struct MulRhs {
+  Position pos;
   MulOp op;
   UnaryExpr rhs;
 };
@@ -113,17 +169,20 @@ struct MulExpr {
 enum class AddOp { Add, Sub };
 
 struct AddRhs {
+  Position pos;
   AddOp op;
   MulExpr rhs;
 };
 
 struct AddExpr {
+  Position pos;
   MulExpr left;
   std::vector<AddRhs> right;
 };
 
 enum class ShiftOp { Shl, Shr };
 struct ShiftRhs {
+  Position pos;
   ShiftOp op;
   AddExpr rhs;
 };
@@ -135,6 +194,7 @@ struct ShiftExpr {
 enum class CmpOp { Lt, Le, Gt, Ge };
 
 struct CmpRhs {
+  Position pos;
   CmpOp op;
   ShiftExpr rhs;
 };
@@ -169,7 +229,10 @@ struct BitOrExpr {
   std::vector<BitXorExpr> right;
 };
 
-using ValueExpr = std::variant<IfExpr, BitOrExpr>;
+struct ValueExpr {
+  Position pos;
+  std::variant<IfExpr, BitOrExpr> expr;
+};
 
 struct Assignment {
   Ident ident;

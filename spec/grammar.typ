@@ -81,7 +81,7 @@
 
 #pad(x: 1.5em)[
   #text(size: 9pt)[
-    *Abstract.* This document defines the formal context-free grammar of *Skib67*, a layout-insensitive, statically typed, expression-oriented language with uniform reference semantics where only one-dimensional arrays are mutable. Grammar productions are presented in Extended Backus–Naur Form (EBNF), where non-terminals appear in _italics_, terminal tokens in *`monospace`*, optional forms in `[`#sym.dots`]`, and zero-or-more repetitions in `{`#sym.dots`}`.
+    *Abstract.* This document defines the formal context-free grammar and static typing rules of *Skib67*, a layout-insensitive, statically typed, expression-oriented language with uniform reference semantics where only one-dimensional arrays are mutable. Grammar productions are presented in Extended Backus–Naur Form (EBNF), where non-terminals appear in _italics_, terminal tokens in *`monospace`*, optional forms in `[`#sym.dots`]`, and zero-or-more repetitions in `{`#sym.dots`}`.
   ]
 ]
 
@@ -98,9 +98,10 @@ Whitespace and line breaks act purely as token delimiters and carry no syntactic
   rule("ident", [#grp[#nt("lower") #alt #kw("_")] #rep[#nt("letter") #alt #nt("digit") #alt #kw("_")]]),
   rule("mod-ident", [#nt("upper") #rep[#nt("letter") #alt #nt("digit")]]),
   rule("qual-ident", [#opt[#nt("mod-ident") #kw(".")] #nt("ident") #note("optional module prefix, e.g. Std.fmax")]),
-  rule("literal", [#nt("hex-int") #alt #nt("float-lit") #alt #nt("int-lit") #alt #kw("true") #alt #kw("false")]),
-  rule("hex-int", [#kw("0x") #nt("hex-digit") #rep[#nt("hex-digit")]]),
+  rule("literal", [#nt("hex-int") #alt #nt("float-lit") #alt #nt("uint-lit") #alt #nt("int-lit") #alt #kw("True") #alt #kw("False")]),
+  rule("hex-int", [#kw("0x") #nt("hex-digit") #rep[#nt("hex-digit")] #note("unsigned 64-bit hexadecimal")]),
   rule("float-lit", [#nt("digit") #rep[#nt("digit")] #kw(".") #nt("digit") #rep[#nt("digit")]]),
+  rule("uint-lit", [#nt("digit") #rep[#nt("digit")] #grp[#kw("u") #alt #kw("U")] #note("unsigned 64-bit integer")]),
   rule("int-lit", [#nt("digit") #rep[#nt("digit")]]),
   rule("type", [#kw("()") #alt #nt("scalar-type") #alt #nt("array-type")]),
   rule("scalar-type", [#kw("Int") #alt #kw("Uint") #alt #kw("Float") #alt #kw("Bool") #note("all scalars are 64-bit")]),
@@ -111,7 +112,7 @@ Whitespace and line breaks act purely as token delimiters and carry no syntactic
 = Top-Level Program and Declarations
 #v(0.3em)
 
-A Skib67 compilation unit consists of a sequence of top-level value and function declarations. Every function declaration—whether top-level or local—must specify full parameter type annotations and an explicit return type; nullary functions omit the parameter list.
+A Skib67 compilation unit consists of a sequence of top-level value and function declarations. Every function declaration—whether top-level or local—must specify full parameter type annotations and an explicit return type; nullary functions omit the parameter list. Top-level functions are mutually recursive.
 
 #grammar(
   rule("program", [#rep[#nt("top-decl")]]),
@@ -126,12 +127,12 @@ A Skib67 compilation unit consists of a sequence of top-level value and function
 = Expressions, Bindings, and Control Flow
 #v(0.3em)
 
-All constructs in Skib67 evaluate as expressions without any layout or indentation rules, and all values obey uniform reference semantics. Scalar values and variable bindings are strictly immutable: reference bindings (`x = e1 [e2]`) and local function declarations (`f (...) : T = body [cont]`) bind a single right-hand expression and automatically chain into an optional continuation expression without delimiters; if omitted at the end of a scope, they evaluate to `()`. Only one-dimensional arrays are mutable: in-place element mutations are restricted to array subscripts via the `*=` operator (`subscript *= e`) and evaluate to `()`. Like any other side-effecting expression, sequential array mutations must be explicitly chained with the sequencing operator `;`.
+All constructs in Skib67 evaluate as expressions without any layout or indentation rules, and all values obey uniform reference semantics. Scalar values and variable bindings are strictly immutable: reference bindings (`x = e1 [e2]`) bind a single right-hand expression and chain into an optional continuation expression without delimiters (evaluating to `()` if omitted at the end of a scope), while local function declarations (`f (...) : T = body cont`) must be followed by a continuation expression. Only one-dimensional arrays are mutable: in-place element mutations are restricted to array subscripts via the `*=` operator (`subscript *= e`) and evaluate to `()`. Like any other side-effecting expression, sequential array mutations must be explicitly chained with the sequencing operator `;`.
 
 #grammar(
   rule("expr", [#nt("seq-expr")]),
   rule("seq-expr", [#nt("bind-expr") #rep[#kw(";") #nt("bind-expr")] #note("sequences side-effecting expressions")]),
-  rule("bind-expr", [#nt("func-decl") #opt[#nt("expr")] #note("local function; optional next")]),
+  rule("bind-expr", [#nt("func-decl") #nt("expr") #note("local function; continuation required")]),
   more([#nt("ident") #opt[#kw(":") #nt("type")] #kw("=") #nt("value-expr") #opt[#nt("expr")] #note("immutable binding; optional next")]),
   more([#nt("mut-expr")]),
   more([#nt("value-expr")]),
@@ -144,7 +145,7 @@ All constructs in Skib67 evaluate as expressions without any layout or indentati
 = Operator Precedence and Primary Expressions
 #v(0.3em)
 
-Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, parenthesized expressions, literals, and identifiers). Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
+Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, array initializers, dynamic array allocations, parenthesized expressions, literals, and identifiers). Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
 
 #grammar(
   rule("bin-expr", [#nt("bit-or-expr")]),
@@ -157,8 +158,26 @@ Built-in binary operators are stratified by fixed syntactic precedence from lowe
   rule("add-expr", [#nt("mul-expr") #rep[#grp[#kw("+") #alt #kw("-")] #nt("mul-expr")]]),
   rule("mul-expr", [#nt("unary-expr") #rep[#grp[#kw("*") #alt #kw("/") #alt #kw("%")] #nt("unary-expr")]]),
   rule("unary-expr", [#grp[#kw("-") #alt #kw("!") #alt #kw("~")] #nt("unary-expr") #alt #nt("primary-expr")]),
-  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("qual-ident")]),
+  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("qual-ident")]),
   rule("call", [#nt("qual-ident") #kw("(") #opt[#nt("arg-list")] #kw(")") #note("elided for 0-arg functions")]),
   rule("arg-list", [#nt("expr") #rep[#kw(",") #nt("expr")]]),
   rule("subscript", [#nt("qual-ident") #kw("[") #nt("expr") #kw("]") #note("single-dimension indexing")]),
+  rule("array-lit", [#kw("[") #opt[#nt("arg-list")] #kw("]") #note("array initializer")]),
+  rule("array-alloc", [#kw("array") #kw("(") #nt("expr") #kw(")") #note("allocates zeroed array of Uint length")]),
 )
+
+#v(0.6em)
+= Type Coercions and Array Construction
+#v(0.3em)
+
+Skib67 enforces static typing with a strictly widening implicit numeric coercion hierarchy:
+
+#align(center)[
+  #kw("Uint") $arrow.r$ #kw("Int") $arrow.r$ #kw("Float")
+]
+
+Implicit widening is applied automatically in binary arithmetic and comparison operators (promoting both operands to their common wider type), `if-then-else` branch unification, variable bindings, function arguments, return values, and array element mutations (`*=`). Implicit narrowing (e.g., `Float` to `Int` or `Int` to `Uint`) is disallowed and requires an explicit conversion function such as `Std.float2uint`. Bitwise operators (`|`, `^`, `&`), shifts (`<<`, `>>`), modulo (`%`), and array subscript indices accept only integral types (`Int` and `Uint`), widening mixed operands to `Int`. Negating a `Uint` with unary `-` widens the result to `Int`.
+
+One-dimensional arrays are constructed in two ways:
+- *Array Initializers (`[e1, e2, ...]`).* A non-empty initializer evaluates each element and infers the container type `Array[T]` using the common widened scalar type `T` of its elements (e.g., `[0x1, 2, 3.5]` has type `Array[Float]`). An empty initializer `[]` carries an unspecialized array type and requires a target `Array[T]` context (such as an explicit type annotation).
+- *Dynamic Allocation (`array(n)`).* The `array` keyword allocates a zero-initialized array of length `n`, where `n` must have type `Uint`. Because `array(n)` does not specify an element type syntactically, it evaluates to an unspecialized array type that unifies with an expected `Array[T]` type; binding it without an explicit type annotation (e.g., `a = array(10u)`) is a compile-time error.

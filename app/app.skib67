@@ -1,97 +1,120 @@
-xSize = 1920
-ySize = 1080
-clickTemp = 90
-clickRad = 30
+xSize = 1920u
+ySize = 1080u
+clickTemp = 90u
+clickRad = 30u
+colorsCount = 8u
+
+colors: Array[Uint] = [
+    0x000004, 0x160B39, 0x420A68, 0x6A176E,
+    0x932667, 0xBA3655, 0xDD513A, 0xF37812,
+    0xFCA50A, 0xF6E8A0
+  ]
 
 interpolate (color1: Uint, color2: Uint, t: Float) : Uint =
-  r1 = Std.rgb2linear (color1 >> 16 & 0xff)
-  g1 = Std.rgb2linear (color1 >> 8 & 0xff)
+  r1 = Std.rgb2linear (color1 >> 16u & 0xff)
+  g1 = Std.rgb2linear (color1 >> 8u & 0xff)
   b1 = Std.rgb2linear (color1 & 0xff)
   
-  r2 = Std.rgb2linear (color2 >> 16 & 0xff)
-  g2 = Std.rgb2linear (color2 >> 8 & 0xff)
+  r2 = Std.rgb2linear (color2 >> 16u & 0xff)
+  g2 = Std.rgb2linear (color2 >> 8u & 0xff)
   b2 = Std.rgb2linear (color2 & 0xff)
 
   r = Std.linear2rgb ((r2 - r1) * t + r1)
   g = Std.linear2rgb ((g2 - g1) * t + g1)
   b = Std.linear2rgb ((b2 - b1) * t + b1)
 
-  (r << 16) | (g << 8) | b
+  (r << 16u) | (g << 8u) | b
 
 colorByTemp (temp: Float) : Uint =
   if temp >= 100.0 then colors[colorsCount - 1]
   else 
     t = Std.fmax (0.0, Std.fmin (temp, 100.0)) / 10.0
-    k = t
+    k = Std.float2uint (t)
     color1 = colors[k]
     color2 = colors[k + 1]
     interpolate (color1, color2, t - k)
 
 calcTemp (x: Uint, y: Uint, field: Array[Float]): Float =
   currT = field[y * xSize + x]
-  top = if y > 0 then field[(y - 1) * xSize + x] else currT
-  bottom = if y < ySize - 1 then field[(y + 1) * xSize + x] else currT
-  left = if x > 0 then field[y * xSize + x - 1] else currT
-  right = if x < xSize - 1 then field[y * xSize + x + 1] else currT
+  top = if y > 0u then field[(y - 1u) * xSize + x] else currT
+  bottom = if y < ySize - 1u then field[(y + 1u) * xSize + x] else currT
+  left = if x > 0u then field[y * xSize + x - 1u] else currT
+  right = if x < xSize - 1u then field[y * xSize + x + 1u] else currT
   currT + 0.25 * (top + bottom + left + right - 4.0 * currT)
 
 recalculateField (current: Array[Float], next: Array[Float]) : () = 
-  let g (xx: Uint, y: Uint) : () = 
+  g (xx: Uint, y: Uint) : () = 
     if xx >= xSize then ()
     else 
       temp = calcTemp (xx, y, current)
-      next[y * xSize + xx] *= temp
-      g (xx + 1, y)
+      next[y * xSize + xx] *= temp;
+      g (xx + 1u, y)
 
-  let f (yy: Uint) : () = 
+  f (yy: Uint) : () = 
     if yy >= ySize then ()
-    else g (0, yy); f (yy + 1)
+    else g (0u, yy); f (yy + 1u)
 
-  f (0)
+  f (0u)
 
 drawField (field: Array[Float]) : () = 
-  let g (xx: Uint, y: Uint) : () = 
+  g (xx: Uint, y: Uint) : () = 
     if xx >= xSize then ()
     else 
-      Std.simPutPixel (xx, y, colorByTemp (field[y * xSize + xx]))
-      g (xx + 1, y)
+      Std.simPutPixel (xx, y, colorByTemp (field[y * xSize + xx]));
+      g (xx + 1u, y)
 
-  let f (yy: Uint) : () = 
+  f (yy: Uint) : () = 
     if yy >= ySize then ()
-    else g (0, yy); f (yy + 1)
+    else g (0u, yy); f (yy + 1u)
 
-  f (0)
+  f (0u)
 
-addObjectRectangle (xy: Uint, field: Array[Float]) : () = 
-  x = xy >> 16 
-  y = xy & 0xffff 
+addObjectCircle (xy: Uint, field: Array[Float]) : () =
+  cx = xy >> 16
+  cy = xy & 0xffff
 
-  top = if y - clickRad >= 0 then y - clickRad else 0 
-  bottom = if y + clickRad < ySize then y + clickRad else ySize - 1 
-  left = if x - clickRad >= 0 then x - clickRad else 0 
-  right = if x + clickRad < xSize then x + clickRad else xSize - 1 
+  inner (x: Uint, y: Uint) : Uint =
+    i1 = (cy + y) * xSize + (cx + x)
+    i2 = (cy - y) * xSize + (cx + x)
+    i3 = (cy + y) * xSize + (cx - x)
+    i4 = (cy - y) * xSize + (cx - x)
+    i5 = (cy + x) * xSize + (cx + y)
+    i6 = (cy - x) * xSize + (cx + y)
+    i7 = (cy + x) * xSize + (cx - y)
+    i8 = (cy - x) * xSize + (cx - y)
 
-  let g (yy: Uint, end: Uint, xx: Uint) : () = 
-    if yy > end then ()
-    else field[yy * xSize + xx] *= clockTemp; g (yy + 1, end, xx)
+    field[i1] *= field[i1] + clickTemp;
+    field[i2] *= field[i2] + clickTemp;
+    field[i3] *= field[i3] + clickTemp;
+    field[i4] *= field[i4] + clickTemp;
+    field[i5] *= field[i5] + clickTemp;
+    field[i6] *= field[i6] + clickTemp;
+    field[i7] *= field[i7] + clickTemp;
+    field[i8] *= field[i8] + clickTemp;
 
-  let f (xx: Uint, end: Uint) : () = 
-    if xx < end then ()
-    else g (left, right, xx); f (xx - 1, end)
+    if y == 0u then 0u
+    else if x * x + (y - 1u) * (y - 1u) < clickRad * clickRad then y
+    else inner (x, y - 1u)
 
-  f (top, bottom)
+  outer (x: Uint, y: Uint) : () =
+    if x >= y then ()
+    else
+      nextY = inner (x, y)
+      outer (x + 1u, nextY)
+
+  outer (0u, clickRad)
 
 handleClick (a : Array[Float]) : () = 
   if Std.simHasClick then 
     addObjectCircle (Std.simGetClick, a); 
-    handlClick (a)
+    handleClick (a)
   else ()
 
 app : () = 
-  field1 = Std.array (xSize * ySize)
-  field2 = Std.array (xSize * ySize)
+  field1: Array[Float] = array(xSize * ySize)
+  field2: Array[Float] = array(xSize * ySize)
   f (prev: Array[Float], next: Array[Float]) : () = 
-    handleClick;
+    handleClick (prev);
     drawField (next);
     recalculateField (prev, next);
     f (next, prev)
