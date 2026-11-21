@@ -11,7 +11,7 @@ struct SkibError {
 };
 
 inline std::string errsToString(std::string fileName,
-                                std::vector<SkibError>& errs) {
+                                const std::vector<SkibError>& errs) {
   std::stringstream buffer;
   for (const auto& err : errs)
     buffer << fileName << ":" << err.line << ":" << err.column

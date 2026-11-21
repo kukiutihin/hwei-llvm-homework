@@ -434,25 +434,6 @@ struct PBitOrExpr {
       });
 };
 
-let range_op_table =
-    lexy::symbol_table<RangeOp>.map<LEXY_SYMBOL("..=")>(RangeOp::Inclusive).map<LEXY_SYMBOL("..")>(RangeOp::Exclusive);
-
-struct PRangeOp {
-  let name = "range operator";
-  let rule = dsl::symbol<range_op_table>;
-  let value = lexy::forward<RangeOp>;
-};
-struct PRangeRhs {
-  let name = "range expression";
-  let rule = dsl::p<PRangeOp> >> dsl::p<PBitOrExpr>;
-  let value = lexy::construct<RangeRhs>;
-};
-struct PBinExpr {
-  let name = "binary expression";
-  let rule = dsl::p<PBitOrExpr> + dsl::opt(dsl::p<PRangeRhs>);
-  let value = lexy::construct<BinExpr>;
-};
-
 struct PIfExpr {
   let name = "if expression";
   let rule = LEXY_KEYWORD("if", keyword) >>
@@ -468,7 +449,7 @@ struct PIfExpr {
 
 struct PValueExpr {
   let name = "expression";
-  let rule = dsl::p<PIfExpr> | (dsl::else_ >> dsl::p<PBinExpr>);
+  let rule = dsl::p<PIfExpr> | (dsl::else_ >> dsl::p<PBitOrExpr>);
   let value = lexy::construct<ValueExpr>;
 };
 

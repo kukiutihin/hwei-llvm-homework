@@ -126,7 +126,7 @@ A Skib67 compilation unit consists of a sequence of top-level value and function
 = Expressions, Bindings, and Control Flow
 #v(0.3em)
 
-All constructs in Skib67 evaluate as expressions without any layout or indentation rules, and all values obey uniform reference semantics. Scalar values and variable bindings are strictly immutable: reference bindings (`x = e1 [e2]`) and local function declarations (`f (...) : T = body [cont]`) bind a single right-hand expression and automatically chain into an optional continuation expression without delimiters; if omitted at the end of a scope, they evaluate to `()`. Only one-dimensional arrays are mutable: in-place element mutations are restricted to array subscripts via the `*=` operator (`subscript *= e`) and evaluate to `()`. Like any other side-effecting expression, sequential array mutations must be explicitly chained with the sequencing operator `;`. Range expressions (`..` and `..=`) act as list-monad producers when bound and compile down to nested imperative `for` loops.
+All constructs in Skib67 evaluate as expressions without any layout or indentation rules, and all values obey uniform reference semantics. Scalar values and variable bindings are strictly immutable: reference bindings (`x = e1 [e2]`) and local function declarations (`f (...) : T = body [cont]`) bind a single right-hand expression and automatically chain into an optional continuation expression without delimiters; if omitted at the end of a scope, they evaluate to `()`. Only one-dimensional arrays are mutable: in-place element mutations are restricted to array subscripts via the `*=` operator (`subscript *= e`) and evaluate to `()`. Like any other side-effecting expression, sequential array mutations must be explicitly chained with the sequencing operator `;`.
 
 #grammar(
   rule("expr", [#nt("seq-expr")]),
@@ -144,10 +144,10 @@ All constructs in Skib67 evaluate as expressions without any layout or indentati
 = Operator Precedence and Primary Expressions
 #v(0.3em)
 
-Built-in binary and range operators are stratified by fixed syntactic precedence from lowest (`..`, `..=`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, parenthesized expressions, literals, and identifiers). Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
+Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, parenthesized expressions, literals, and identifiers). Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
 
 #grammar(
-  rule("bin-expr", [#nt("bit-or-expr") #opt[#grp[#kw("..") #alt #kw("..=")] #nt("bit-or-expr")] #note("range lowers to loop")]),
+  rule("bin-expr", [#nt("bit-or-expr")]),
   rule("bit-or-expr", [#nt("bit-xor-expr") #rep[#kw("|") #nt("bit-xor-expr")]]),
   rule("bit-xor-expr", [#nt("bit-and-expr") #rep[#kw("^") #nt("bit-and-expr")]]),
   rule("bit-and-expr", [#nt("eq-expr") #rep[#kw("&") #nt("eq-expr")]]),

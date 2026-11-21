@@ -4,6 +4,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <variant>
 
+#include "ast.h"
+
 namespace {
 
 Program parseOk(std::string code) {
@@ -26,18 +28,18 @@ void parseErr(std::string code) {
   REQUIRE_FALSE(res.error().empty());
 }
 
-const BinExpr& unwrapBin(const ValueExpr& v) {
-  REQUIRE(std::holds_alternative<BinExpr>(v));
-  return std::get<BinExpr>(v);
+const BitOrExpr& unwrapBin(const ValueExpr& v) {
+  REQUIRE(std::holds_alternative<BitOrExpr>(v));
+  return std::get<BitOrExpr>(v);
 }
 
-const PrimaryExpr& unwrapPrimary(const BinExpr& b) {
-  return b.left.left.left.left.left.left.left.left.left.primary;
+const PrimaryExpr& unwrapPrimary(const BitOrExpr& b) {
+  return b.left.left.left.left.left.left.left.left.primary;
 }
 
 }  // namespace
 
-// 1. Top-level value declarations (single and multiple)
+// Top-level value declarations (single and multiple)
 TEST_CASE("1. Top-level value declarations", "[parser][top-decl]") {
   SECTION("Single untyped top-level value") {
     auto prog = parseOk("ySize = 1080");
@@ -58,7 +60,7 @@ TEST_CASE("1. Top-level value declarations", "[parser][top-decl]") {
   }
 }
 
-// 2. Top-level function declarations (with/without paramList, multiple
+// Top-level function declarations (with/without paramList, multiple
 // functions)
 TEST_CASE("2. Top-level function declarations", "[parser][func-decl]") {
   SECTION("Function with arguments and return type") {
@@ -93,7 +95,7 @@ TEST_CASE("2. Top-level function declarations", "[parser][func-decl]") {
   }
 }
 
-// 3. All built-in types
+// All built-in types
 TEST_CASE("3. All types", "[parser][types]") {
   auto prog = parseOk(R"(
     f(
@@ -130,7 +132,7 @@ TEST_CASE("3. All types", "[parser][types]") {
   }
 }
 
-// 4. Nested function & following expression outside nested function
+// Nested function & following expression outside nested function
 TEST_CASE("4. Nested functions", "[parser][nested-func]") {
   SECTION("Dangling nested function without following expression is an error") {
     parseErr(R"(
@@ -156,7 +158,7 @@ TEST_CASE("4. Nested functions", "[parser][nested-func]") {
   }
 }
 
-// 5. Several bindings inside a function
+// Several bindings inside a function
 TEST_CASE("5. Several bindings inside function", "[parser][bindings]") {
   auto prog = parseOk(R"(
     compute(x: Int): Int =
@@ -173,7 +175,7 @@ TEST_CASE("5. Several bindings inside function", "[parser][bindings]") {
   REQUIRE(std::holds_alternative<Assignment>(a_bind.next->binds[0]));
 }
 
-// 6. Several ()-returning expressions separated by ;
+// Several ()-returning expressions separated by ;
 TEST_CASE("6. Multiple unit expressions separated by semicolon",
           "[parser][seq]") {
   auto prog = parseOk(R"(
@@ -190,7 +192,7 @@ TEST_CASE("6. Multiple unit expressions separated by semicolon",
   REQUIRE(std::holds_alternative<ValueExpr>(fn.expr->binds[2]));
 }
 
-// 7. Two ()-returning expressions without ; must be an error
+// Two ()-returning expressions without ; must be an error
 TEST_CASE("7. Missing semicolon between unit expressions is an error",
           "[parser][seq][error]") {
   parseErr(R"(
@@ -206,7 +208,7 @@ TEST_CASE("7. Missing semicolon between unit expressions is an error",
   )");
 }
 
-// 9. Function calls (with args, empty (), and bare nullary identifier)
+// Function calls (with args, empty (), and bare nullary identifier)
 TEST_CASE("9. Function calls", "[parser][call]") {
   auto prog = parseOk(R"(
     test(): Int =
@@ -219,7 +221,7 @@ TEST_CASE("9. Function calls", "[parser][call]") {
   REQUIRE(prog.size() == 1);
 }
 
-// 10. if-then-else inside function with multiple expressions in then & else
+// if-then-else inside function with multiple expressions in then & else
 TEST_CASE("10. if-then-else with multi-expression branches", "[parser][if]") {
   auto prog = parseOk(R"(
     step(arr: Array[Int], flag: Bool): () =
@@ -238,7 +240,7 @@ TEST_CASE("10. if-then-else with multi-expression branches", "[parser][if]") {
   REQUIRE(std::holds_alternative<IfExpr>(val));
 }
 
-// 11. Sequential if-then-else bindings (left is outside bottom)
+// Sequential if-then-else bindings (left is outside bottom)
 TEST_CASE("11. Sequential if-then-else value bindings",
           "[parser][if][bindings]") {
   auto prog = parseOk(R"(
@@ -266,33 +268,7 @@ TEST_CASE("11. Sequential if-then-else value bindings",
   REQUIRE(std::holds_alternative<ValueExpr>(left.next->binds[0]));
 }
 
-// 12. Range operators .. and ..= (lowest precedence)
-TEST_CASE("12. Range operators and lowest precedence", "[parser][range]") {
-  SECTION("Exclusive range ..") {
-    auto prog = parseOk("r = 0 .. 10");
-    auto& bin = unwrapBin(std::get<ValDecl>(prog[0]).expr);
-    REQUIRE(bin.right.has_value());
-    REQUIRE(bin.right->op == RangeOp::Exclusive);
-  }
-
-  SECTION("Inclusive range ..=") {
-    auto prog = parseOk("r = 1 ..= 10");
-    auto& bin = unwrapBin(std::get<ValDecl>(prog[0]).expr);
-    REQUIRE(bin.right.has_value());
-    REQUIRE(bin.right->op == RangeOp::Inclusive);
-  }
-
-  SECTION("Range has lower precedence than bitwise OR and arithmetic") {
-    auto prog = parseOk("r = a | b .. c + d | e");
-    auto& bin = unwrapBin(std::get<ValDecl>(prog[0]).expr);
-    REQUIRE(bin.right.has_value());
-    // LHS is (a | b), RHS is ((c + d) | e)
-    REQUIRE(bin.left.right.size() == 1);
-    REQUIRE(bin.right->rhs.right.size() == 1);
-  }
-}
-
-// 13. Literals (int, hex, float, bool, ()) and invalid trailing dot
+// Literals (int, hex, float, bool, ()) and invalid trailing dot
 TEST_CASE("13. Literals", "[parser][literals]") {
   SECTION("Valid literals") {
     auto prog = parseOk(R"(
@@ -311,8 +287,7 @@ TEST_CASE("13. Literals", "[parser][literals]") {
     parseErr("f = 0.");
   }
 }
-
-// 14. All binary & unary operators and full precedence hierarchy (per spec)
+// All binary & unary operators and full precedence hierarchy (per spec)
 TEST_CASE("14. Operator precedence and unary/binary operators",
           "[parser][precedence]") {
   SECTION("All unary operators: -, !, ~ and chaining") {
@@ -331,10 +306,7 @@ TEST_CASE("14. Operator precedence and unary/binary operators",
     // a | b ^ c & d == e < f << g + h * -i
     // Each operator should nest strictly inside the one to its left.
     auto prog = parseOk("x = a | b ^ c & d == e < f << g + h * -i");
-    auto& bin = unwrapBin(std::get<ValDecl>(prog[0]).expr);
-    REQUIRE_FALSE(bin.right.has_value());
-
-    const auto& bitOr = bin.left;
+    const auto& bitOr = std::get<BitOrExpr>(std::get<ValDecl>(prog[0]).expr);
     REQUIRE(bitOr.right.size() == 1);  // a | (...)
 
     const auto& bitXor = bitOr.right[0];
@@ -370,8 +342,8 @@ TEST_CASE("14. Operator precedence and unary/binary operators",
 
   SECTION("Parentheses override precedence") {
     auto prog = parseOk("x = (a + b) * c");
-    auto& bin = unwrapBin(std::get<ValDecl>(prog[0]).expr);
-    const auto& mul = bin.left.left.left.left.left.left.left.left;
+    const auto& bitOr = std::get<BitOrExpr>(std::get<ValDecl>(prog[0]).expr);
+    const auto& mul = bitOr.left.left.left.left.left.left.left;
     REQUIRE(mul.right.size() == 1);
     REQUIRE(std::holds_alternative<InParens>(mul.left.primary));
   }

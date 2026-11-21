@@ -169,19 +169,7 @@ struct BitOrExpr {
   std::vector<BitXorExpr> right;
 };
 
-enum class RangeOp { Exclusive, Inclusive };
-
-struct RangeRhs {
-  RangeOp op;
-  BitOrExpr rhs;
-};
-
-struct BinExpr {
-  BitOrExpr left;
-  std::optional<RangeRhs> right;
-};
-
-using ValueExpr = std::variant<IfExpr, BinExpr>;
+using ValueExpr = std::variant<IfExpr, BitOrExpr>;
 
 struct Assignment {
   Ident ident;
@@ -197,8 +185,7 @@ struct MutExpr {
 
 struct SkibExpr;
 
-using BindExpr =
-    std::variant<ValueExpr, MutExpr, Assignment, FuncDeclExpr>;
+using BindExpr = std::variant<ValueExpr, MutExpr, Assignment, FuncDeclExpr>;
 
 struct Expr {
   std::vector<BindExpr> binds;

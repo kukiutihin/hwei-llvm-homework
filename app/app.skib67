@@ -36,15 +36,31 @@ calcTemp (x: Uint, y: Uint, field: Array[Float]): Float =
   currT + 0.25 * (top + bottom + left + right - 4.0 * currT)
 
 recalculateField (current: Array[Float], next: Array[Float]) : () = 
-  y = (0 .. ySize)
-  x = (0 .. xSize)
-  temp = calcTemp (x, y, current)
-  next[y * xSize + x] *= temp
+  let g (xx: Uint, y: Uint) : () = 
+    if xx >= xSize then ()
+    else 
+      temp = calcTemp (xx, y, current)
+      next[y * xSize + xx] *= temp
+      g (xx + 1, y)
+
+  let f (yy: Uint) : () = 
+    if yy >= ySize then ()
+    else g (0, yy); f (yy + 1)
+
+  f (0)
 
 drawField (field: Array[Float]) : () = 
-  y = (0 .. ySize)
-  x = (0 .. xSize)
-  Std.simPutPixel (x, y, colorByTemp (field[y * xSize + x]))
+  let g (xx: Uint, y: Uint) : () = 
+    if xx >= xSize then ()
+    else 
+      Std.simPutPixel (xx, y, colorByTemp (field[y * xSize + xx]))
+      g (xx + 1, y)
+
+  let f (yy: Uint) : () = 
+    if yy >= ySize then ()
+    else g (0, yy); f (yy + 1)
+
+  f (0)
 
 addObjectRectangle (xy: Uint, field: Array[Float]) : () = 
   x = xy >> 16 
@@ -55,9 +71,15 @@ addObjectRectangle (xy: Uint, field: Array[Float]) : () =
   left = if x - clickRad >= 0 then x - clickRad else 0 
   right = if x + clickRad < xSize then x + clickRad else xSize - 1 
 
-  yy = (top ..= bottom) 
-  xx = (left ..= right) 
-  field[yy * xSize + xx] *= clickTemp
+  let g (yy: Uint, end: Uint, xx: Uint) : () = 
+    if yy > end then ()
+    else field[yy * xSize + xx] *= clockTemp; g (yy + 1, end, xx)
+
+  let f (xx: Uint, end: Uint) : () = 
+    if xx < end then ()
+    else g (left, right, xx); f (xx - 1, end)
+
+  f (top, bottom)
 
 handleClick (a : Array[Float]) : () = 
   if Std.simHasClick then 
