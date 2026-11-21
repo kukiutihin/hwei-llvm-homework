@@ -39,7 +39,6 @@ const PrimaryExpr& unwrapPrimary(const BitOrExpr& b) {
 
 }  // namespace
 
-// Top-level value declarations (single and multiple)
 TEST_CASE("Top-level value declarations", "[parser][top-decl]") {
   SECTION("Single untyped top-level value") {
     auto prog = parseOk("ySize = 1080");
@@ -60,8 +59,6 @@ TEST_CASE("Top-level value declarations", "[parser][top-decl]") {
   }
 }
 
-// Top-level function declarations (with/without paramList, multiple
-// functions)
 TEST_CASE("Top-level function declarations", "[parser][func-decl]") {
   SECTION("Function with arguments and return type") {
     auto prog = parseOk("add(a: Int, b: Int): Int = a + b");
@@ -95,7 +92,6 @@ TEST_CASE("Top-level function declarations", "[parser][func-decl]") {
   }
 }
 
-// All built-in types
 TEST_CASE("All types", "[parser][types]") {
   auto prog = parseOk(R"(
     f(
@@ -132,7 +128,6 @@ TEST_CASE("All types", "[parser][types]") {
   }
 }
 
-// Nested function & following expression outside nested function
 TEST_CASE("Nested functions", "[parser][nested-func]") {
   SECTION("Dangling nested function without following expression is an error") {
     parseErr(R"(
@@ -158,7 +153,6 @@ TEST_CASE("Nested functions", "[parser][nested-func]") {
   }
 }
 
-// Several bindings inside a function
 TEST_CASE("Several bindings inside function", "[parser][bindings]") {
   auto prog = parseOk(R"(
     compute(x: Int): Int =
@@ -175,7 +169,6 @@ TEST_CASE("Several bindings inside function", "[parser][bindings]") {
   REQUIRE(std::holds_alternative<Assignment>(a_bind.next->binds[0]));
 }
 
-// Several ()-returning expressions separated by ;
 TEST_CASE("Multiple unit expressions separated by semicolon",
           "[parser][seq]") {
   auto prog = parseOk(R"(
@@ -192,7 +185,6 @@ TEST_CASE("Multiple unit expressions separated by semicolon",
   REQUIRE(std::holds_alternative<ValueExpr>(fn.expr->binds[2]));
 }
 
-// Two ()-returning expressions without ; must be an error
 TEST_CASE("Missing semicolon between unit expressions is an error",
           "[parser][seq][error]") {
   parseErr(R"(
@@ -208,7 +200,6 @@ TEST_CASE("Missing semicolon between unit expressions is an error",
   )");
 }
 
-// Function calls (with args, empty (), and bare nullary identifier)
 TEST_CASE("Function calls", "[parser][call]") {
   auto prog = parseOk(R"(
     test(): Int =
@@ -221,7 +212,6 @@ TEST_CASE("Function calls", "[parser][call]") {
   REQUIRE(prog.size() == 1);
 }
 
-// if-then-else inside function with multiple expressions in then & else
 TEST_CASE("if-then-else with multi-expression branches", "[parser][if]") {
   auto prog = parseOk(R"(
     step(arr: Array[Int], flag: Bool): () =
@@ -240,7 +230,6 @@ TEST_CASE("if-then-else with multi-expression branches", "[parser][if]") {
   REQUIRE(std::holds_alternative<IfExpr>(val.expr));
 }
 
-// Sequential if-then-else bindings (left is outside bottom)
 TEST_CASE("Sequential if-then-else value bindings",
           "[parser][if][bindings]") {
   auto prog = parseOk(R"(
@@ -268,7 +257,6 @@ TEST_CASE("Sequential if-then-else value bindings",
   REQUIRE(std::holds_alternative<ValueExpr>(left.next->binds[0]));
 }
 
-// Literals (int, hex, float, bool, ()) and invalid trailing dot
 TEST_CASE("Literals", "[parser][literals]") {
   SECTION("Valid literals") {
     auto prog = parseOk(R"(
@@ -288,7 +276,6 @@ TEST_CASE("Literals", "[parser][literals]") {
   }
 }
 
-// All binary & unary operators and full precedence hierarchy (per spec)
 TEST_CASE("Operator precedence and unary/binary operators",
           "[parser][precedence]") {
   SECTION("All unary operators: -, !, ~ and chaining") {

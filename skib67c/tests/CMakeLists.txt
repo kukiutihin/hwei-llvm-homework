@@ -1,5 +1,6 @@
 add_executable(skibc_tests
   parser_test.cpp
+  typechecker_test.cpp
 )
 
 target_link_libraries(skibc_tests PRIVATE
