@@ -510,3 +510,63 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     checkPos(std::get<IntLit>(std::get<Literal>(unary.primary)).pos, 1, 23);
   }
 }
+
+TEST_CASE("Color conversion keywords: rgb2linear and linear2rgb",
+          "[parser][color-conv]") {
+  SECTION("rgb2linear and linear2rgb with and without spaces") {
+    auto prog = parseOk(R"(
+      r1 = rgb2linear (color1 >> 16u & 0xff)
+      r2 = rgb2linear(0xff)
+      c1 = linear2rgb ((r2 - r1) * t + r1)
+      c2 = linear2rgb(0.5)
+      arr: Array[Float] = array (xSize * ySize)
+    )");
+    REQUIRE(prog.size() == 5);
+
+    const auto& p0 = unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[0]).expr));
+    REQUIRE(std::holds_alternative<Rgb2Linear>(p0));
+    REQUIRE(std::get<Rgb2Linear>(p0).expr != nullptr);
+
+    const auto& p1 = unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[1]).expr));
+    REQUIRE(std::holds_alternative<Rgb2Linear>(p1));
+
+    const auto& p2 = unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[2]).expr));
+    REQUIRE(std::holds_alternative<Linear2Rgb>(p2));
+    REQUIRE(std::get<Linear2Rgb>(p2).expr != nullptr);
+
+    const auto& p3 = unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[3]).expr));
+    REQUIRE(std::holds_alternative<Linear2Rgb>(p3));
+
+    const auto& p4 = unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[4]).expr));
+    REQUIRE(std::holds_alternative<ArrayAlloc>(p4));
+  }
+
+  SECTION("Source positions on Rgb2Linear and Linear2Rgb") {
+    // 12345678901234567890
+    // a = rgb2linear (0xff)
+    // b = linear2rgb (0.5)
+    auto prog = parseOk(
+        "a = rgb2linear (0xff)\n"
+        "b = linear2rgb (0.5)\n");
+    REQUIRE(prog.size() == 2);
+
+    const auto& r2l = std::get<Rgb2Linear>(
+        unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[0]).expr)));
+    CHECK(r2l.pos.line == 1);
+    CHECK(r2l.pos.column == 5);
+
+    const auto& l2r = std::get<Linear2Rgb>(
+        unwrapPrimary(unwrapBin(std::get<ValDecl>(prog[1]).expr)));
+    CHECK(l2r.pos.line == 2);
+    CHECK(l2r.pos.column == 5);
+  }
+
+  SECTION("Invalid rgb2linear / linear2rgb syntax") {
+    parseErr("a = rgb2linear()");
+    parseErr("a = linear2rgb()");
+    parseErr("a = rgb2linear 0xff");
+    parseErr("a = linear2rgb 0.5");
+    parseErr("rgb2linear = 1");
+    parseErr("linear2rgb = 1");
+  }
+}

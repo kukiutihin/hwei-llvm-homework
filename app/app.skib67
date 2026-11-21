@@ -11,17 +11,17 @@ colors: Array[Uint] = [
   ]
 
 interpolate (color1: Uint, color2: Uint, t: Float) : Uint =
-  r1 = Std.rgb2linear (color1 >> 16u & 0xff)
-  g1 = Std.rgb2linear (color1 >> 8u & 0xff)
-  b1 = Std.rgb2linear (color1 & 0xff)
+  r1 = rgb2linear (color1 >> 16u & 0xff)
+  g1 = rgb2linear (color1 >> 8u & 0xff)
+  b1 = rgb2linear (color1 & 0xff)
   
-  r2 = Std.rgb2linear (color2 >> 16u & 0xff)
-  g2 = Std.rgb2linear (color2 >> 8u & 0xff)
-  b2 = Std.rgb2linear (color2 & 0xff)
+  r2 = rgb2linear (color2 >> 16u & 0xff)
+  g2 = rgb2linear (color2 >> 8u & 0xff)
+  b2 = rgb2linear (color2 & 0xff)
 
-  r = Std.linear2rgb ((r2 - r1) * t + r1)
-  g = Std.linear2rgb ((g2 - g1) * t + g1)
-  b = Std.linear2rgb ((b2 - b1) * t + b1)
+  r = linear2rgb ((r2 - r1) * t + r1)
+  g = linear2rgb ((g2 - g1) * t + g1)
+  b = linear2rgb ((b2 - b1) * t + b1)
 
   (r << 16u) | (g << 8u) | b
 
@@ -111,8 +111,8 @@ handleClick (a : Array[Float]) : () =
   else ()
 
 app : () = 
-  field1: Array[Float] = array(xSize * ySize)
-  field2: Array[Float] = array(xSize * ySize)
+  field1: Array[Float] = array (xSize * ySize)
+  field2: Array[Float] = array (xSize * ySize)
   f (prev: Array[Float], next: Array[Float]) : () = 
     handleClick (prev);
     drawField (next);

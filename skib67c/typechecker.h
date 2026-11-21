@@ -217,8 +217,6 @@ class TypeChecker {
         FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
     globals["Std.fabs"] = FuncSig{{Derived::Float}, Derived::Float};
     globals["Std.sqrt"] = FuncSig{{Derived::Float}, Derived::Float};
-    globals["Std.rgb2linear"] = FuncSig{{Derived::Uint}, Derived::Float};
-    globals["Std.linear2rgb"] = FuncSig{{Derived::Float}, Derived::Uint};
     globals["Std.float2uint"] = FuncSig{{Derived::Float}, Derived::Uint};
   }
 
@@ -571,6 +569,22 @@ class TypeChecker {
       expectedButGot(Derived::Uint, sizeType, alloc.pos);
     }
     return Derived::AnyArray;
+  }
+
+  Derived operator()(const Rgb2Linear& node) {
+    Derived argType = (*this)(*node.expr);
+    if (!canImplicitCast(argType, Derived::Uint)) {
+      expectedButGot(Derived::Uint, argType, node.pos);
+    }
+    return Derived::Float;
+  }
+
+  Derived operator()(const Linear2Rgb& node) {
+    Derived argType = (*this)(*node.expr);
+    if (!canImplicitCast(argType, Derived::Float)) {
+      expectedButGot(Derived::Float, argType, node.pos);
+    }
+    return Derived::Uint;
   }
 
   Derived operator()(const QualIdent& qid) {

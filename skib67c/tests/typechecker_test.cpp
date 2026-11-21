@@ -340,3 +340,37 @@ TEST_CASE("Undefined functions and variables", "[typechecker][undefined]") {
     checkErr("f(): () = UnknownMod.foo(1)");
   }
 }
+
+TEST_CASE("7. Color conversion keywords: rgb2linear and linear2rgb",
+          "[typechecker][color-conv]") {
+  SECTION("Valid rgb2linear and linear2rgb usage") {
+    checkOk(R"(
+      a: Float = rgb2linear (0xff)
+      b: Float = rgb2linear (128u)
+      c: Uint = linear2rgb (0.5)
+      d: Uint = linear2rgb (1)    
+      e: Uint = linear2rgb (1u)   
+
+      interpolate(color1: Uint, color2: Uint, t: Float): Uint =
+        r1 = rgb2linear ((color1 >> 16u) & 0xff)
+        r2 = rgb2linear ((color2 >> 16u) & 0xff)
+        linear2rgb ((r2 - r1) * t + r1)
+    )");
+  }
+
+  SECTION("Invalid argument types and return assignments") {
+    // rgb2linear requires Uint (no Int/Float/Bool/() narrowing)
+    checkErr("x = rgb2linear (10)");
+    checkErr("x = rgb2linear (0.5)");
+    checkErr("x = rgb2linear (True)");
+    checkErr("x = rgb2linear (())");
+
+    // linear2rgb requires Float (or numeric widening to Float)
+    checkErr("x = linear2rgb (True)");
+    checkErr("x = linear2rgb (())");
+
+    // rgb2linear returns Float, cannot assign to Int or Uint
+    checkErr("x: Int = rgb2linear (0xff)");
+    checkErr("x: Uint = rgb2linear (0xff)");
+  }
+}

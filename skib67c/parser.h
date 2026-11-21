@@ -42,6 +42,8 @@ enum class TokenKind {
   KwBool,
   KwArray,
   KwArrayAlloc,
+  KwRgb2Linear,
+  KwLinear2Rgb,
 
   // Punctuation & Operators
   LParen,
@@ -146,6 +148,10 @@ class Lexer {
           kind = TokenKind::KwElse;
         else if (text == "array")
           kind = TokenKind::KwArrayAlloc;
+        else if (text == "rgb2linear")
+          kind = TokenKind::KwRgb2Linear;
+        else if (text == "linear2rgb")
+          kind = TokenKind::KwLinear2Rgb;
         tokens.push_back({kind, text, pos});
         continue;
       }
@@ -818,6 +824,28 @@ class RecursiveDescentParser {
       if (!expect(TokenKind::RParen, "')'")) return std::nullopt;
       return PrimaryExpr{
           ArrayAlloc{arrPos, std::make_unique<Expr>(std::move(*sizeExpr))}};
+    }
+
+    // rgb2linear (expr)
+    if (check(TokenKind::KwRgb2Linear)) {
+      Position kwPos = advance().pos;
+      if (!expect(TokenKind::LParen, "'('")) return std::nullopt;
+      auto arg = parseExpr();
+      if (!arg) return std::nullopt;
+      if (!expect(TokenKind::RParen, "')'")) return std::nullopt;
+      return PrimaryExpr{
+          Rgb2Linear{kwPos, std::make_unique<Expr>(std::move(*arg))}};
+    }
+
+    // linear2rgb (expr)
+    if (check(TokenKind::KwLinear2Rgb)) {
+      Position kwPos = advance().pos;
+      if (!expect(TokenKind::LParen, "'('")) return std::nullopt;
+      auto arg = parseExpr();
+      if (!arg) return std::nullopt;
+      if (!expect(TokenKind::RParen, "')'")) return std::nullopt;
+      return PrimaryExpr{
+          Linear2Rgb{kwPos, std::make_unique<Expr>(std::move(*arg))}};
     }
 
     if (check(TokenKind::KwTrue)) {

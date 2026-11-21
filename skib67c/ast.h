@@ -126,7 +126,8 @@ struct UintLit {
   std::uint64_t value;
 };
 
-using Literal = std::variant<Skib, HexLit, FloatLit, IntLit, UintLit, True, False>;
+using Literal =
+    std::variant<Skib, HexLit, FloatLit, IntLit, UintLit, True, False>;
 
 struct InParens {
   std::unique_ptr<Expr> expr;
@@ -142,8 +143,19 @@ struct ArrayAlloc {
   std::unique_ptr<Expr> size;
 };
 
-using PrimaryExpr = std::variant<Call, Subscript, InParens, ArrayLit,
-                                 ArrayAlloc, Literal, QualIdent>;
+struct Rgb2Linear {
+  Position pos;
+  std::unique_ptr<Expr> expr;
+};
+
+struct Linear2Rgb {
+  Position pos;
+  std::unique_ptr<Expr> expr;
+};
+
+using PrimaryExpr =
+    std::variant<Call, Subscript, InParens, ArrayLit, ArrayAlloc, Literal,
+                 QualIdent, Linear2Rgb, Rgb2Linear>;
 
 enum class UnaryOp { Neg, Not, BitNot };
 

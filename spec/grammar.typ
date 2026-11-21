@@ -145,7 +145,7 @@ All constructs in Skib67 evaluate as expressions without any layout or indentati
 = Operator Precedence and Primary Expressions
 #v(0.3em)
 
-Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, array initializers, dynamic array allocations, parenthesized expressions, literals, and identifiers). Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
+Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, array initializers, dynamic array allocations, built-in color-space conversions, parenthesized expressions, literals, and identifiers). Because whitespace is insignificant, spaces are freely permitted between a keyword (`array`, `rgb2linear`, `linear2rgb`) and its parenthesized argument. Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
 
 #grammar(
   rule("bin-expr", [#nt("bit-or-expr")]),
@@ -158,16 +158,17 @@ Built-in binary operators are stratified by fixed syntactic precedence from lowe
   rule("add-expr", [#nt("mul-expr") #rep[#grp[#kw("+") #alt #kw("-")] #nt("mul-expr")]]),
   rule("mul-expr", [#nt("unary-expr") #rep[#grp[#kw("*") #alt #kw("/") #alt #kw("%")] #nt("unary-expr")]]),
   rule("unary-expr", [#grp[#kw("-") #alt #kw("!") #alt #kw("~")] #nt("unary-expr") #alt #nt("primary-expr")]),
-  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("qual-ident")]),
+  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #nt("color-conv") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("qual-ident")]),
   rule("call", [#nt("qual-ident") #kw("(") #opt[#nt("arg-list")] #kw(")") #note("elided for 0-arg functions")]),
   rule("arg-list", [#nt("expr") #rep[#kw(",") #nt("expr")]]),
   rule("subscript", [#nt("qual-ident") #kw("[") #nt("expr") #kw("]") #note("single-dimension indexing")]),
   rule("array-lit", [#kw("[") #opt[#nt("arg-list")] #kw("]") #note("array initializer")]),
   rule("array-alloc", [#kw("array") #kw("(") #nt("expr") #kw(")") #note("allocates zeroed array of Uint length")]),
+  rule("color-conv", [#grp[#kw("rgb2linear") #alt #kw("linear2rgb")] #kw("(") #nt("expr") #kw(")") #note("sRGB / linear channel conversion")]),
 )
 
 #v(0.6em)
-= Type Coercions and Array Construction
+= Type Coercions, Built-In Keywords, and Array Construction
 #v(0.3em)
 
 Skib67 enforces static typing with a strictly widening implicit numeric coercion hierarchy:
@@ -178,6 +179,10 @@ Skib67 enforces static typing with a strictly widening implicit numeric coercion
 
 Implicit widening is applied automatically in binary arithmetic and comparison operators (promoting both operands to their common wider type), `if-then-else` branch unification, variable bindings, function arguments, return values, and array element mutations (`*=`). Implicit narrowing (e.g., `Float` to `Int` or `Int` to `Uint`) is disallowed and requires an explicit conversion function such as `Std.float2uint`. Bitwise operators (`|`, `^`, `&`), shifts (`<<`, `>>`), modulo (`%`), and array subscript indices accept only integral types (`Int` and `Uint`), widening mixed operands to `Int`. Negating a `Uint` with unary `-` widens the result to `Int`.
 
+Built-in color-space conversion keywords operate on single color channels:
+- *`rgb2linear (e)`* takes an expression of type `Uint` and evaluates to `Float`.
+- *`linear2rgb (e)`* takes an expression of type `Float` (accepting `Uint` and `Int` via implicit widening) and evaluates to `Uint`.
+
 One-dimensional arrays are constructed in two ways:
 - *Array Initializers (`[e1, e2, ...]`).* A non-empty initializer evaluates each element and infers the container type `Array[T]` using the common widened scalar type `T` of its elements (e.g., `[0x1, 2, 3.5]` has type `Array[Float]`). An empty initializer `[]` carries an unspecialized array type and requires a target `Array[T]` context (such as an explicit type annotation).
-- *Dynamic Allocation (`array(n)`).* The `array` keyword allocates a zero-initialized array of length `n`, where `n` must have type `Uint`. Because `array(n)` does not specify an element type syntactically, it evaluates to an unspecialized array type that unifies with an expected `Array[T]` type; binding it without an explicit type annotation (e.g., `a = array(10u)`) is a compile-time error.
+- *Dynamic Allocation (`array (n)`).* The `array` keyword allocates a zero-initialized array of length `n`, where `n` must have type `Uint`. Because `array (n)` does not specify an element type syntactically, it evaluates to an unspecialized array type that unifies with an expected `Array[T]` type; binding it without an explicit type annotation (e.g., `a = array (10u)`) is a compile-time error.
