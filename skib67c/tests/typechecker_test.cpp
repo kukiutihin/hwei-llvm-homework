@@ -333,12 +333,6 @@ TEST_CASE("Undefined functions and variables", "[typechecker][undefined]") {
       caller(): Int = inner()
     )");
   }
-
-  SECTION("Undefined module symbols") {
-    checkErr("f(): () = Std.doesNotExist");
-    checkErr("f(): () = Std.doesNotExist(1)");
-    checkErr("f(): () = UnknownMod.foo(1)");
-  }
 }
 
 TEST_CASE("7. Color conversion keywords: rgb2linear and linear2rgb",

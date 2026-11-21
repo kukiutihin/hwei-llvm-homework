@@ -169,8 +169,7 @@ TEST_CASE("Several bindings inside function", "[parser][bindings]") {
   REQUIRE(std::holds_alternative<Assignment>(a_bind.next->binds[0]));
 }
 
-TEST_CASE("Multiple unit expressions separated by semicolon",
-          "[parser][seq]") {
+TEST_CASE("Multiple unit expressions separated by semicolon", "[parser][seq]") {
   auto prog = parseOk(R"(
     run(arr: Array[Int]): () =
       arr[0] *= 1;
@@ -206,7 +205,7 @@ TEST_CASE("Function calls", "[parser][call]") {
       a = foo(1, 2 + 3, bar)
       b = baz()
       c = nullaryFn
-      d = Mod.func(a, b)
+      d = func(a, b)
       a + b + c + d
   )");
   REQUIRE(prog.size() == 1);
@@ -230,8 +229,7 @@ TEST_CASE("if-then-else with multi-expression branches", "[parser][if]") {
   REQUIRE(std::holds_alternative<IfExpr>(val.expr));
 }
 
-TEST_CASE("Sequential if-then-else value bindings",
-          "[parser][if][bindings]") {
+TEST_CASE("Sequential if-then-else value bindings", "[parser][if][bindings]") {
   auto prog = parseOk(R"(
     calc(x: Uint, y: Uint, xSize: Uint, ySize: Uint, field: Array[Float], currT: Float): Float =
       bottom = if y < ySize - 1 then field[(y + 1) * xSize + x] else currT
@@ -379,19 +377,23 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     REQUIRE(fn.paramList.size() == 5);
     checkPos(fn.paramList[0].pos, 1, 6);
     checkPos(fn.paramList[0].ident.pos, 1, 6);
-    checkPos(std::get<Int>(std::get<ScalarType>(fn.paramList[0].type)).pos, 1, 9);
+    checkPos(std::get<Int>(std::get<ScalarType>(fn.paramList[0].type)).pos, 1,
+             9);
 
     checkPos(fn.paramList[1].pos, 1, 14);
     checkPos(fn.paramList[1].ident.pos, 1, 14);
-    checkPos(std::get<Uint>(std::get<ScalarType>(fn.paramList[1].type)).pos, 1, 17);
+    checkPos(std::get<Uint>(std::get<ScalarType>(fn.paramList[1].type)).pos, 1,
+             17);
 
     checkPos(fn.paramList[2].pos, 1, 23);
     checkPos(fn.paramList[2].ident.pos, 1, 23);
-    checkPos(std::get<Float>(std::get<ScalarType>(fn.paramList[2].type)).pos, 1, 26);
+    checkPos(std::get<Float>(std::get<ScalarType>(fn.paramList[2].type)).pos, 1,
+             26);
 
     checkPos(fn.paramList[3].pos, 1, 33);
     checkPos(fn.paramList[3].ident.pos, 1, 33);
-    checkPos(std::get<Bool>(std::get<ScalarType>(fn.paramList[3].type)).pos, 1, 36);
+    checkPos(std::get<Bool>(std::get<ScalarType>(fn.paramList[3].type)).pos, 1,
+             36);
 
     checkPos(fn.paramList[4].pos, 1, 42);
     checkPos(fn.paramList[4].ident.pos, 1, 42);
@@ -412,10 +414,11 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     // Continuation () literal on line 3
     const auto& nextVal = std::get<ValueExpr>(nested.next->binds[0]);
     checkPos(nextVal.pos, 3, 3);
-    checkPos(std::get<Skib>(std::get<Literal>(unwrapValPrimary(nextVal))).pos, 3, 3);
+    checkPos(std::get<Skib>(std::get<Literal>(unwrapValPrimary(nextVal))).pos,
+             3, 3);
   }
 
-  SECTION("All Literals, ValueExpr, and ModIdent") {
+  SECTION("All Literals, ValueExpr") {
     // 123456789012
     // a = 42
     // b = 3.14
@@ -431,11 +434,12 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
         "d = True\n"
         "e = False\n"
         "f = ()\n"
-        "g = Std.fmax\n");
+        "g = fmax\n");
     REQUIRE(prog.size() == 7);
 
     auto litAt = [&](std::size_t i) -> const Literal& {
-      return std::get<Literal>(unwrapValPrimary(std::get<ValDecl>(prog[i]).expr));
+      return std::get<Literal>(
+          unwrapValPrimary(std::get<ValDecl>(prog[i]).expr));
     };
 
     checkPos(std::get<ValDecl>(prog[0]).ident.pos, 1, 1);
@@ -465,10 +469,8 @@ TEST_CASE("Source positions on all AST nodes", "[parser][position]") {
     checkPos(std::get<ValDecl>(prog[6]).ident.pos, 7, 1);
     checkPos(std::get<ValDecl>(prog[6]).expr.pos, 7, 5);
     const auto& qid =
-        std::get<QualIdent>(unwrapValPrimary(std::get<ValDecl>(prog[6]).expr));
-    REQUIRE(qid.module.has_value());
-    checkPos(qid.module->pos, 7, 5);
-    checkPos(qid.ident.pos, 7, 9);
+        std::get<Ident>(unwrapValPrimary(std::get<ValDecl>(prog[6]).expr));
+    checkPos(qid.pos, 7, 5);
   }
 
   SECTION("Operators: CmpRhs, ShiftRhs, AddExpr, AddRhs, MulRhs, UnaryExpr") {

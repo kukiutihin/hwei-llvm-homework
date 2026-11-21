@@ -17,16 +17,6 @@ struct Ident {
   Position pos;
 };
 
-struct ModIdent {
-  std::string ident;
-  Position pos;
-};
-
-struct QualIdent {
-  std::optional<ModIdent> module;
-  Ident ident;
-};
-
 struct Skib {
   Position pos;
 };
@@ -87,14 +77,14 @@ struct IfExpr {
 };
 
 struct Subscript {
-  QualIdent expr;
+  Ident expr;
   std::unique_ptr<Expr> index;
 };
 
 using ArgsList = std::vector<Expr>;
 
 struct Call {
-  QualIdent ident;
+  Ident ident;
   ArgsList args;
 };
 
@@ -155,7 +145,7 @@ struct Linear2Rgb {
 
 using PrimaryExpr =
     std::variant<Call, Subscript, InParens, ArrayLit, ArrayAlloc, Literal,
-                 QualIdent, Linear2Rgb, Rgb2Linear>;
+                 Ident, Linear2Rgb, Rgb2Linear>;
 
 enum class UnaryOp { Neg, Not, BitNot };
 

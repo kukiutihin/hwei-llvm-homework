@@ -161,7 +161,7 @@ class Lexer {
           advance();
         }
         std::string_view text = src.substr(start, idx - start);
-        TokenKind kind = TokenKind::ModIdent;
+        TokenKind kind;
         if (text == "True")
           kind = TokenKind::KwTrue;
         else if (text == "False")
@@ -176,6 +176,11 @@ class Lexer {
           kind = TokenKind::KwBool;
         else if (text == "Array")
           kind = TokenKind::KwArray;
+        else {
+          errors.push_back({pos.line, pos.column,
+                            std::format("unknown keyword '{}'", text)});
+          continue;
+        }
         tokens.push_back({kind, text, pos});
         continue;
       }
@@ -392,15 +397,9 @@ class RecursiveDescentParser {
   }
 
   bool isMutExprLookahead() const {
-    std::size_t i = pos;
-    if (tokens[i].kind == TokenKind::ModIdent && i + 1 < tokens.size() &&
-        tokens[i + 1].kind == TokenKind::Dot) {
-      i += 2;
-    }
-    if (i >= tokens.size() || tokens[i].kind != TokenKind::Ident) return false;
-    i++;
+    if (!check(TokenKind::Ident)) return false;
     auto afterBracket =
-        skipBalanced(i, TokenKind::LBracket, TokenKind::RBracket);
+        skipBalanced(pos + 1, TokenKind::LBracket, TokenKind::RBracket);
     return afterBracket && *afterBracket < tokens.size() &&
            tokens[*afterBracket].kind == TokenKind::MutAssign;
   }
@@ -424,18 +423,6 @@ class RecursiveDescentParser {
     auto tok = expect(TokenKind::Ident, "identifier");
     if (!tok) return std::nullopt;
     return Ident{std::string(tok->text), tok->pos};
-  }
-
-  std::optional<QualIdent> parseQualIdent() {
-    std::optional<ModIdent> mod;
-    if (check(TokenKind::ModIdent) && check(TokenKind::Dot, 1)) {
-      Token modTok = advance();
-      advance();  // '.'
-      mod = ModIdent{std::string(modTok.text), modTok.pos};
-    }
-    auto id = parseIdent();
-    if (!id) return std::nullopt;
-    return QualIdent{std::move(mod), std::move(*id)};
   }
 
   std::optional<ScalarType> parseScalarType() {
@@ -601,7 +588,7 @@ class RecursiveDescentParser {
     }
 
     if (isMutExprLookahead()) {
-      auto qid = parseQualIdent();
+      auto qid = parseIdent();
       if (!qid) return std::nullopt;
       if (!expect(TokenKind::LBracket, "'['")) return std::nullopt;
       auto idxExpr = parseExpr();
@@ -882,7 +869,7 @@ class RecursiveDescentParser {
     }
 
     if (check(TokenKind::Ident) || check(TokenKind::ModIdent)) {
-      auto qid = parseQualIdent();
+      auto qid = parseIdent();
       if (!qid) return std::nullopt;
 
       if (match(TokenKind::LParen)) {

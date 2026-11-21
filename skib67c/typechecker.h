@@ -203,21 +203,19 @@ class TypeChecker {
 
   void registerBuiltins() {
     auto& globals = funcScopes.back();
-    globals["Std.simInit"] = FuncSig{{}, Derived::Skib};
-    globals["Std.simExit"] = FuncSig{{}, Derived::Skib};
-    globals["Std.simHasClick"] = FuncSig{{}, Derived::Bool};
-    globals["Std.simGetClick"] = FuncSig{{}, Derived::Uint};
-    globals["Std.simPutPixel"] =
+    globals["simInit"] = FuncSig{{}, Derived::Skib};
+    globals["simExit"] = FuncSig{{}, Derived::Skib};
+    globals["simHasClick"] = FuncSig{{}, Derived::Bool};
+    globals["simGetClick"] = FuncSig{{}, Derived::Uint};
+    globals["simPutPixel"] =
         FuncSig{{Derived::Uint, Derived::Uint, Derived::Uint}, Derived::Skib};
-    globals["Std.simFlush"] = FuncSig{{}, Derived::Skib};
-    globals["Std.simRand"] = FuncSig{{}, Derived::Uint};
-    globals["Std.fmax"] =
-        FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
-    globals["Std.fmin"] =
-        FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
-    globals["Std.fabs"] = FuncSig{{Derived::Float}, Derived::Float};
-    globals["Std.sqrt"] = FuncSig{{Derived::Float}, Derived::Float};
-    globals["Std.float2uint"] = FuncSig{{Derived::Float}, Derived::Uint};
+    globals["simFlush"] = FuncSig{{}, Derived::Skib};
+    globals["simRand"] = FuncSig{{}, Derived::Uint};
+    globals["fmax"] = FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
+    globals["fmin"] = FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
+    globals["fabs"] = FuncSig{{Derived::Float}, Derived::Float};
+    globals["sqrt"] = FuncSig{{Derived::Float}, Derived::Float};
+    globals["float2uint"] = FuncSig{{Derived::Float}, Derived::Uint};
   }
 
  public:
@@ -587,27 +585,14 @@ class TypeChecker {
     return Derived::Uint;
   }
 
-  Derived operator()(const QualIdent& qid) {
-    if (qid.module.has_value()) {
-      std::string fullName = qid.module->ident + "." + qid.ident.ident;
-      if (auto fnSig = lookupFunc(fullName); fnSig && fnSig->params.empty()) {
-        return fnSig->ret;
-      }
-      addError(qid.module->pos,
-               std::format("Unknown module symbol '{}'", fullName));
-      return Derived::Error;
-    }
-
-    if (auto varType = lookupVar(qid.ident.ident)) {
+  Derived operator()(const Ident& id) {
+    if (auto varType = lookupVar(id.ident)) {
       return *varType;
     }
-    if (auto fnSig = lookupFunc(qid.ident.ident);
-        fnSig && fnSig->params.empty()) {
+    if (auto fnSig = lookupFunc(id.ident); fnSig && fnSig->params.empty()) {
       return fnSig->ret;
     }
-
-    addError(qid.ident.pos,
-             std::format("Undefined identifier '{}'", qid.ident.ident));
+    addError(id.pos, std::format("Undefined identifier '{}'", id.ident));
     return Derived::Error;
   }
 
@@ -616,7 +601,7 @@ class TypeChecker {
     Derived idxType = (*this)(*sub.index);
 
     if (!isIntegral(idxType) && idxType != Derived::Error) {
-      addError(sub.expr.ident.pos,
+      addError(sub.expr.pos,
                std::format("Array index must be Int or Uint, got {}",
                            derivedToString(idxType)));
     }
@@ -624,39 +609,34 @@ class TypeChecker {
     if (arrType == Derived::Error) return Derived::Error;
     auto elem = arrayElemType(arrType);
     if (!elem) {
-      addError(sub.expr.ident.pos,
-               std::format("Cannot subscript non-array type {}",
-                           derivedToString(arrType)));
+      addError(sub.expr.pos, std::format("Cannot subscript non-array type {}",
+                                         derivedToString(arrType)));
       return Derived::Error;
     }
     return *elem;
   }
 
   Derived operator()(const Call& call) {
-    std::string fullName = call.ident.module ? call.ident.module->ident + "." +
-                                                   call.ident.ident.ident
-                                             : call.ident.ident.ident;
-
-    auto sig = lookupFunc(fullName);
+    const std::string& name = call.ident.ident;
+    auto sig = lookupFunc(name);
     if (!sig) {
-      addError(call.ident.ident.pos,
-               std::format("Undefined function '{}'", fullName));
+      addError(call.ident.pos, std::format("Undefined function '{}'", name));
       return Derived::Error;
     }
 
     if (call.args.size() != sig->params.size()) {
-      addError(call.ident.ident.pos,
-               std::format("Function '{}' expects {} arguments, got {}",
-                           fullName, sig->params.size(), call.args.size()));
+      addError(call.ident.pos,
+               std::format("Function '{}' expects {} arguments, got {}", name,
+                           sig->params.size(), call.args.size()));
       return sig->ret;
     }
 
     for (std::size_t i = 0; i < call.args.size(); ++i) {
       Derived argType = (*this)(call.args[i]);
       if (!canImplicitCast(argType, sig->params[i])) {
-        expectedButGot(sig->params[i], argType, call.ident.ident.pos);
+        expectedButGot(sig->params[i], argType, call.ident.pos);
       }
     }
     return sig->ret;
-  }
+  };
 };

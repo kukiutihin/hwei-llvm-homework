@@ -92,12 +92,10 @@
 = Lexical Elements and Type Syntax
 #v(0.3em)
 
-Whitespace and line breaks act purely as token delimiters and carry no syntactic or positional significance. Value and function identifiers begin with a lowercase letter or underscore (optionally qualified by a `PascalCase` module prefix such as `Std.fmax`). Skib67 features a closed set of built-in types consisting solely of the unit type `()`, 64-bit scalar primitives (`Int`, `Uint`, `Float`, and `Bool`), and strictly one-dimensional `Array[T]` containers of scalar elements.
+Whitespace and line breaks act purely as token delimiters and carry no syntactic or positional significance. Value and function identifiers begin with a lowercase letter or underscore. Skib67 features a closed set of built-in types consisting solely of the unit type `()`, 64-bit scalar primitives (`Int`, `Uint`, `Float`, and `Bool`), and strictly one-dimensional `Array[T]` containers of scalar elements.
 
 #grammar(
   rule("ident", [#grp[#nt("lower") #alt #kw("_")] #rep[#nt("letter") #alt #nt("digit") #alt #kw("_")]]),
-  rule("mod-ident", [#nt("upper") #rep[#nt("letter") #alt #nt("digit")]]),
-  rule("qual-ident", [#opt[#nt("mod-ident") #kw(".")] #nt("ident") #note("optional module prefix, e.g. Std.fmax")]),
   rule("literal", [#nt("hex-int") #alt #nt("float-lit") #alt #nt("uint-lit") #alt #nt("int-lit") #alt #kw("True") #alt #kw("False")]),
   rule("hex-int", [#kw("0x") #nt("hex-digit") #rep[#nt("hex-digit")] #note("unsigned 64-bit hexadecimal")]),
   rule("float-lit", [#nt("digit") #rep[#nt("digit")] #kw(".") #nt("digit") #rep[#nt("digit")]]),
@@ -158,10 +156,10 @@ Built-in binary operators are stratified by fixed syntactic precedence from lowe
   rule("add-expr", [#nt("mul-expr") #rep[#grp[#kw("+") #alt #kw("-")] #nt("mul-expr")]]),
   rule("mul-expr", [#nt("unary-expr") #rep[#grp[#kw("*") #alt #kw("/") #alt #kw("%")] #nt("unary-expr")]]),
   rule("unary-expr", [#grp[#kw("-") #alt #kw("!") #alt #kw("~")] #nt("unary-expr") #alt #nt("primary-expr")]),
-  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #nt("color-conv") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("qual-ident")]),
-  rule("call", [#nt("qual-ident") #kw("(") #opt[#nt("arg-list")] #kw(")") #note("elided for 0-arg functions")]),
+  rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #nt("color-conv") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("ident")]),
+  rule("call", [#nt("ident") #kw("(") #opt[#nt("arg-list")] #kw(")") #note("elided for 0-arg functions")]),
   rule("arg-list", [#nt("expr") #rep[#kw(",") #nt("expr")]]),
-  rule("subscript", [#nt("qual-ident") #kw("[") #nt("expr") #kw("]") #note("single-dimension indexing")]),
+  rule("subscript", [#nt("ident") #kw("[") #nt("expr") #kw("]") #note("single-dimension indexing")]),
   rule("array-lit", [#kw("[") #opt[#nt("arg-list")] #kw("]") #note("array initializer")]),
   rule("array-alloc", [#kw("array") #kw("(") #nt("expr") #kw(")") #note("allocates zeroed array of Uint length")]),
   rule("color-conv", [#grp[#kw("rgb2linear") #alt #kw("linear2rgb")] #kw("(") #nt("expr") #kw(")") #note("sRGB / linear channel conversion")]),
