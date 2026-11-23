@@ -1,0 +1,8 @@
+main : () =
+  printi (if 3 == 3 then 1 else 0);
+  printi (if 3 != 3 then 1 else 0);
+  printi (if 2 < 3 then 1 else 0);
+  printi (if 3 <= 3 then 1 else 0);
+  printi (if 4 > 3 then 1 else 0);
+  printi (if 3 >= 4 then 1 else 0);
+  printi (if 1 < 2 then (if 5 > 10 then 100 else 200) else 300)

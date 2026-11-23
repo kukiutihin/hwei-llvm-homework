@@ -1,0 +1,11 @@
+g = 100
+h: Uint = 50u
+
+main : () =
+  printi (g);
+  g = 20
+  a = 5
+  b = a + g
+  printi (g);
+  printi (b);
+  printui (h)

@@ -3,8 +3,6 @@ project(llvm LANGUAGES C CXX)
 include(CTest)
 
 include(FetchContent)
-FetchContent_Declare(lexy URL https://lexy.foonathan.net/download/lexy-src.zip)
-FetchContent_MakeAvailable(lexy)
 
 FetchContent_Declare(
   Catch2
@@ -34,5 +32,6 @@ find_package(LLVM REQUIRED CONFIG)
 find_package(SDL2 REQUIRED)
 
 add_subdirectory(app)
-add_subdirectory(asm/asm_to_ir)
+# add_subdirectory(asm/asm_to_ir)
 add_subdirectory(skib67c)
+add_subdirectory(sim)

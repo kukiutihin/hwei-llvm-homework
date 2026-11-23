@@ -1,0 +1,4 @@
+main () : () =
+  printui (linear2rgb (rgb2linear (0u)));
+  printui (linear2rgb (rgb2linear (128u)));
+  printui (linear2rgb (rgb2linear (255u)))

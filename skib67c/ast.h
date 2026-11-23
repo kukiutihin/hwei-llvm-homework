@@ -131,6 +131,7 @@ struct ArrayLit {
 struct ArrayAlloc {
   Position pos;
   std::unique_ptr<Expr> size;
+  mutable std::optional<ScalarType> elemType;
 };
 
 struct Rgb2Linear {

@@ -4,11 +4,17 @@ target_include_directories(skibc_core
   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+target_link_libraries(skibc_core 
+  INTERFACE sim
+)
+
 add_executable(skibc
   main.cpp
 )
 
-target_link_libraries(skibc PRIVATE skibc_core)
+target_link_libraries(skibc 
+  PRIVATE skibc_core
+)
 
 if(BUILD_TESTING)
   enable_testing()

@@ -110,12 +110,12 @@ Whitespace and line breaks act purely as token delimiters and carry no syntactic
 = Top-Level Program and Declarations
 #v(0.3em)
 
-A Skib67 compilation unit consists of a sequence of top-level value and function declarations. Every function declaration—whether top-level or local—must specify full parameter type annotations and an explicit return type; nullary functions omit the parameter list. Top-level functions are mutually recursive.
+A Skib67 compilation unit consists of a sequence of top-level value and function declarations. Every function declaration—whether top-level or local—must specify a parenthesized parameter list with full parameter type annotations and an explicit return type. Top-level functions are mutually recursive.
 
 #grammar(
   rule("program", [#rep[#nt("top-decl")]]),
   rule("top-decl", [#nt("func-decl") #alt #nt("val-decl")]),
-  rule("func-decl", [#nt("ident") #opt[#nt("param-list")] #kw(":") #nt("type") #kw("=") #nt("expr")]),
+  rule("func-decl", [#nt("ident") #nt("param-list") #kw(":") #nt("type") #kw("=") #nt("expr")]),
   rule("val-decl", [#nt("ident") #opt[#kw(":") #nt("type")] #kw("=") #nt("value-expr")]),
   rule("param-list", [#kw("(") #opt[#nt("param") #rep[#kw(",") #nt("param")]] #kw(")")]),
   rule("param", [#nt("ident") #kw(":") #nt("type")]),
@@ -143,7 +143,7 @@ All constructs in Skib67 evaluate as expressions without any layout or indentati
 = Operator Precedence and Primary Expressions
 #v(0.3em)
 
-Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, array initializers, dynamic array allocations, built-in color-space conversions, parenthesized expressions, literals, and identifiers). Because whitespace is insignificant, spaces are freely permitted between a keyword (`array`, `rgb2linear`, `linear2rgb`) and its parenthesized argument. Nullary functions declared without a parameter list (e.g., `app : () = ...`) are invoked directly as bare identifiers without trailing parentheses.
+Built-in binary operators are stratified by fixed syntactic precedence from lowest (`|`) to highest (`*`, `/`, `%`), followed by prefix unary operators and primary expressions (function calls, single-dimension array subscripts, array initializers, dynamic array allocations, built-in color-space conversions, parenthesized expressions, literals, and identifiers). Because whitespace is insignificant, spaces are freely permitted between a keyword (`array`, `rgb2linear`, `linear2rgb`) and its parenthesized argument.
 
 #grammar(
   rule("bin-expr", [#nt("bit-or-expr")]),
@@ -157,7 +157,7 @@ Built-in binary operators are stratified by fixed syntactic precedence from lowe
   rule("mul-expr", [#nt("unary-expr") #rep[#grp[#kw("*") #alt #kw("/") #alt #kw("%")] #nt("unary-expr")]]),
   rule("unary-expr", [#grp[#kw("-") #alt #kw("!") #alt #kw("~")] #nt("unary-expr") #alt #nt("primary-expr")]),
   rule("primary-expr", [#nt("call") #alt #nt("subscript") #alt #nt("array-lit") #alt #nt("array-alloc") #alt #nt("color-conv") #alt #kw("(") #opt[#nt("expr")] #kw(")") #alt #nt("literal") #alt #nt("ident")]),
-  rule("call", [#nt("ident") #kw("(") #opt[#nt("arg-list")] #kw(")") #note("elided for 0-arg functions")]),
+  rule("call", [#nt("ident") #kw("(") #opt[#nt("arg-list")] #kw(")")]),
   rule("arg-list", [#nt("expr") #rep[#kw(",") #nt("expr")]]),
   rule("subscript", [#nt("ident") #kw("[") #nt("expr") #kw("]") #note("single-dimension indexing")]),
   rule("array-lit", [#kw("[") #opt[#nt("arg-list")] #kw("]") #note("array initializer")]),

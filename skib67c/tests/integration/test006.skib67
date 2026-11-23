@@ -1,0 +1,22 @@
+getZero () : Int = 0
+
+add (a: Int, b: Int) : Int = a + b
+
+fact (n: Int) : Int =
+  if n <= 1 then 1
+  else n * fact (n - 1)
+
+isEven (n: Int) : Bool =
+  if n == 0 then True
+  else isOdd (n - 1)
+
+isOdd (n: Int) : Bool =
+  if n == 0 then False
+  else isEven (n - 1)
+
+main : () =
+  printi (getZero ());
+  printi (add (4, 7));
+  printi (fact (5));
+  printi (if isEven (6) then 1 else 0);
+  printi (if isOdd (6) then 1 else 0)

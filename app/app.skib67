@@ -1,8 +1,8 @@
-xSize = 1920u
-ySize = 1080u
+xSize = 512u
+ySize = 256u
 clickTemp = 90u
 clickRad = 30u
-colorsCount = 8u
+colorsCount = 10u
 
 colors: Array[Uint] = [
     0x000004, 0x160B39, 0x420A68, 0x6A176E,
@@ -26,12 +26,12 @@ interpolate (color1: Uint, color2: Uint, t: Float) : Uint =
   (r << 16u) | (g << 8u) | b
 
 colorByTemp (temp: Float) : Uint =
-  if temp >= 100.0 then colors[colorsCount - 1]
+  if temp >= 100.0 then colors[colorsCount - 1u]
   else 
-    t = Std.fmax (0.0, Std.fmin (temp, 100.0)) / 10.0
-    k = Std.float2uint (t)
+    t = fmax (0.0, fmin (temp, 100.0)) / 100.0 * 9.0
+    k = f2ui (t)
     color1 = colors[k]
-    color2 = colors[k + 1]
+    color2 = colors[k + 1u]
     interpolate (color1, color2, t - k)
 
 calcTemp (x: Uint, y: Uint, field: Array[Float]): Float =
@@ -60,7 +60,7 @@ drawField (field: Array[Float]) : () =
   g (xx: Uint, y: Uint) : () = 
     if xx >= xSize then ()
     else 
-      Std.simPutPixel (xx, y, colorByTemp (field[y * xSize + xx]));
+      simPutPixel (xx, y, colorByTemp (field[y * xSize + xx]));
       g (xx + 1u, y)
 
   f (yy: Uint) : () = 
@@ -105,8 +105,8 @@ addObjectCircle (xy: Uint, field: Array[Float]) : () =
   outer (0u, clickRad)
 
 handleClick (a : Array[Float]) : () = 
-  if Std.simHasClick then 
-    addObjectCircle (Std.simGetClick, a); 
+  if simHasClick () then 
+    addObjectCircle (simGetClick (), a); 
     handleClick (a)
   else ()
 
@@ -116,8 +116,9 @@ app : () =
   f (prev: Array[Float], next: Array[Float]) : () = 
     handleClick (prev);
     drawField (next);
+    simFlush ();
     recalculateField (prev, next);
     f (next, prev)
   f (field1, field2)
 
-main : () = Std.simInit; app; Std.simExit
+main : () = simInit (); app (); simExit ()

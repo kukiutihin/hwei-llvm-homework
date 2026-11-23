@@ -1,0 +1,7 @@
+main : () =
+  printui (10u + 5u);
+  printi (10u + 5);
+  printi (-10u);
+  printf (1.5 + 2.25);
+  printf (2u + 1.5);
+  printf (if False then 4u else 2.5)

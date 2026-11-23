@@ -132,3 +132,10 @@ void app() {
     next = tmp;
   }
 }
+
+int main() {
+  simInit();
+  app();
+  simExit();
+  return 0;
+}

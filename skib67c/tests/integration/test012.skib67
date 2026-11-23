@@ -1,0 +1,4 @@
+main : () =
+  base = 10
+  double () : Int = base * 2
+  printi (double ())

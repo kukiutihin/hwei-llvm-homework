@@ -1,0 +1,4 @@
+main : () =
+  double (x: Int) : Int = x * 2
+  x4 (x: Int) : Int = double (double (x))
+  printi (x4 (5))

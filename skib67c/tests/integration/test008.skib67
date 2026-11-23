@@ -1,0 +1,9 @@
+globalArr = [10, 20, 30, 40]
+
+main : () =
+  uarr: Array[Uint] = [0x10, 0x20, 0xff]
+  farr = [1u, 2, 3.5]
+  printi (globalArr[0]);
+  printi (globalArr[3]);
+  printui (uarr[2]);
+  printf (farr[2])

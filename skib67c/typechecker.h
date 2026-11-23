@@ -175,6 +175,69 @@ class TypeChecker {
     }
   }
 
+  static std::optional<ScalarType> derivedToScalarType(Derived d,
+                                                       Position pos) {
+    switch (d) {
+      case Derived::IntArray:
+        return Int{pos};
+      case Derived::UintArray:
+        return Uint{pos};
+      case Derived::FloatArray:
+        return Float{pos};
+      case Derived::BoolArray:
+        return Bool{pos};
+      default:
+        return std::nullopt;
+    }
+  }
+
+  void stampArrayAlloc(const Expr& expr, Derived expectedArr) {
+    if (expr.binds.empty()) return;
+    const auto& last = expr.binds.back();
+    if (const auto* val = std::get_if<ValueExpr>(&last)) {
+      stampArrayAlloc(*val, expectedArr);
+    } else if (const auto* assign = std::get_if<Assignment>(&last)) {
+      if (assign->next) stampArrayAlloc(*assign->next, expectedArr);
+    } else if (const auto* fnDecl = std::get_if<FuncDeclExpr>(&last)) {
+      if (fnDecl->next) stampArrayAlloc(*fnDecl->next, expectedArr);
+    }
+  }
+
+  void stampArrayAlloc(const ValueExpr& val, Derived expectedArr) {
+    if (!isArray(expectedArr)) return;
+
+    if (const auto* ifExpr = std::get_if<IfExpr>(&val.expr)) {
+      stampArrayAlloc(*ifExpr->then, expectedArr);
+      stampArrayAlloc(*ifExpr->els, expectedArr);
+      return;
+    }
+
+    const auto& bitOr = std::get<BitOrExpr>(val.expr);
+    if (!bitOr.right.empty()) return;
+    const auto& bitXor = bitOr.left;
+    if (!bitXor.right.empty()) return;
+    const auto& bitAnd = bitXor.left;
+    if (!bitAnd.right.empty()) return;
+    const auto& eq = bitAnd.left;
+    if (!eq.right.empty()) return;
+    const auto& cmp = eq.left;
+    if (!cmp.right.empty()) return;
+    const auto& shift = cmp.left;
+    if (!shift.right.empty()) return;
+    const auto& add = shift.left;
+    if (!add.right.empty()) return;
+    const auto& mul = add.left;
+    if (!mul.right.empty()) return;
+    const auto& unary = mul.left;
+    if (!unary.ops.empty()) return;
+
+    if (const auto* alloc = std::get_if<ArrayAlloc>(&unary.primary)) {
+      alloc->elemType = derivedToScalarType(expectedArr, alloc->pos);
+    } else if (const auto* parens = std::get_if<InParens>(&unary.primary)) {
+      stampArrayAlloc(*parens->expr, expectedArr);
+    }
+  }
+
   FuncSig buildFuncSig(const FuncDecl& fn) {
     FuncSig sig;
     sig.params.reserve(fn.paramList.size());
@@ -210,12 +273,14 @@ class TypeChecker {
     globals["simPutPixel"] =
         FuncSig{{Derived::Uint, Derived::Uint, Derived::Uint}, Derived::Skib};
     globals["simFlush"] = FuncSig{{}, Derived::Skib};
-    globals["simRand"] = FuncSig{{}, Derived::Uint};
     globals["fmax"] = FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
     globals["fmin"] = FuncSig{{Derived::Float, Derived::Float}, Derived::Float};
     globals["fabs"] = FuncSig{{Derived::Float}, Derived::Float};
     globals["sqrt"] = FuncSig{{Derived::Float}, Derived::Float};
-    globals["float2uint"] = FuncSig{{Derived::Float}, Derived::Uint};
+    globals["f2ui"] = FuncSig{{Derived::Float}, Derived::Uint};
+    globals["printi"] = FuncSig{{Derived::Int}, Derived::Skib};
+    globals["printf"] = FuncSig{{Derived::Float}, Derived::Skib};
+    globals["printui"] = FuncSig{{Derived::Uint}, Derived::Skib};
   }
 
  public:
@@ -258,6 +323,8 @@ class TypeChecker {
       Derived expected = visit(*valDecl.type);
       if (!canImplicitCast(exprType, expected)) {
         expectedButGot(expected, exprType, valDecl.expr.pos);
+      } else if (exprType == Derived::AnyArray) {
+        stampArrayAlloc(valDecl.expr, expected);
       }
       varScopes.back()[valDecl.ident.ident] = expected;
     } else {
@@ -283,6 +350,8 @@ class TypeChecker {
 
     if (!canImplicitCast(bodyType, expectedRet)) {
       expectedButGot(expectedRet, bodyType, fn.pos);
+    } else if (bodyType == Derived::AnyArray) {
+      stampArrayAlloc(*fn.expr, expectedRet);
     }
   }
 
@@ -315,6 +384,8 @@ class TypeChecker {
       Derived expected = visit(*assign.type);
       if (!canImplicitCast(exprType, expected)) {
         expectedButGot(expected, exprType, assign.expr.pos);
+      } else if (exprType == Derived::AnyArray) {
+        stampArrayAlloc(assign.expr, expected);
       }
       boundType = expected;
     } else if (exprType == Derived::AnyArray) {
@@ -357,6 +428,10 @@ class TypeChecker {
     if (!common) {
       expectedButGot(thenT, elsT, pos);
       return Derived::Error;
+    }
+    if (isArray(*common)) {
+      if (thenT == Derived::AnyArray) stampArrayAlloc(*ifExpr.then, *common);
+      if (elsT == Derived::AnyArray) stampArrayAlloc(*ifExpr.els, *common);
     }
     return *common;
   }
@@ -635,8 +710,10 @@ class TypeChecker {
       Derived argType = (*this)(call.args[i]);
       if (!canImplicitCast(argType, sig->params[i])) {
         expectedButGot(sig->params[i], argType, call.ident.pos);
+      } else if (argType == Derived::AnyArray) {
+        stampArrayAlloc(call.args[i], sig->params[i]);
       }
     }
     return sig->ret;
-  };
+  }
 };

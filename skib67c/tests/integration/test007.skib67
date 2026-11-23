@@ -1,0 +1,8 @@
+main : () =
+  base = 10
+  double (x: Int) : Int = x * 2
+  sumTo (n: Int) : Int =
+    if n <= 0 then 0
+    else n + sumTo (n - 1)
+  printi (double (base));
+  printi (sumTo (5))
